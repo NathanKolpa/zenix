@@ -4,3 +4,19 @@ version = "0.1.0"
 edition = "2021"
 
 [dependencies]
+# TODO: we should write our own bootloader in the future
+bootloader = { version = "0.9.23", features = ["map_physical_memory"] }
+
+[package.metadata.bootimage]
+run-args = [
+    #    "-S",
+    "-gdb", "tcp::1234",
+    "-serial", "stdio",
+    "-display", "none"
+]
+test-args = [
+    "-device", "isa-debug-exit,iobase=0xf4,iosize=0x04", "-serial", "stdio",
+    "-display", "none"
+]
+test-success-exit-code = 33
+test-timeout = 300          # (in seconds)

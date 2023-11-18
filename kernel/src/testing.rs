@@ -1,3 +1,5 @@
+use core::panic::PanicInfo;
+
 pub trait TestCase {
     fn run(&self);
 }
@@ -11,8 +13,11 @@ where
     }
 }
 
-pub fn test_runner(tests: &[&dyn TestCase]) {
+pub fn runner(tests: &[&dyn TestCase]) {
     for test in tests {
         test.run();
     }
+}
+pub fn panic_handler(_info: &PanicInfo) -> ! {
+    loop {}
 }

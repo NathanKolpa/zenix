@@ -15,5 +15,7 @@ A premission can be one of the following:
 - Permission to utilize the CPU for a amout of time (default: inherit)
 - Permisison to utilize RAM for a amount given (default: inherit)
 - Permission to execute certain syscalls (default: inherit)
+- Permission to listen on a port
+- Permission to request at a port
 
 A program can verify the existance of a permission though the `require` syscall.

@@ -27,6 +27,7 @@ impl<T> DerefMut for SpinLockGuard<'_, T> {
     }
 }
 
+/// The spin locking equivalent of `std::sync::Mutex`.
 pub struct SpinLock<T> {
     data: UnsafeCell<T>,
     is_locked: AtomicBool,

@@ -1,3 +1,5 @@
+//! Abstractions around pointers.
+
 use core::ops::Sub;
 use core::{
     fmt::{Debug, Display, Formatter},

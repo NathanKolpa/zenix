@@ -6,6 +6,7 @@ const INCOMPLETE_STATE: u8 = 0;
 const LOCKED_STATE: u8 = 1;
 const COMPLETE_STATE: u8 = 2;
 
+/// The spin locking equivalent of `std::sync::Once`.
 pub struct SpinOnce<T> {
     data: UnsafeCell<MaybeUninit<T>>,
     state: AtomicU8,

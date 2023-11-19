@@ -1,3 +1,5 @@
+//! A test harness.
+
 use core::panic::PanicInfo;
 
 use crate::arch::x86_64::device::qemu::{ExitCode, QEMU_DEVICE};

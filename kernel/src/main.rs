@@ -3,9 +3,13 @@
 #![feature(custom_test_frameworks)]
 #![test_runner(crate::testing::runner)]
 #![reexport_test_harness_main = "test_main"]
+#![feature(doc_cfg)]
 
+mod arch;
+mod debug;
 #[cfg(test)]
 mod testing;
+mod util;
 
 use bootloader::{entry_point, BootInfo};
 use core::panic::PanicInfo;

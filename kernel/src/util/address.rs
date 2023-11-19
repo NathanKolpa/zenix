@@ -237,27 +237,34 @@ mod tests {
     use super::*;
 
     #[test_case]
-    fn align_zero_down() {
+    fn test_align_zero_down() {
         assert_eq!(0, VirtualAddress::align_ptr_down(0, 1024));
     }
 
     #[test_case]
-    fn align_one_down() {
+    fn test_align_one_down() {
         assert_eq!(0, VirtualAddress::align_ptr_down(1, 1024));
     }
 
     #[test_case]
-    fn align_second_page_down() {
+    fn test_align_second_page_down() {
         assert_eq!(1024, VirtualAddress::align_ptr_down(1500, 1024));
     }
 
     #[test_case]
-    fn align_zero_up() {
+    fn test_align_zero_up() {
         assert_eq!(0, VirtualAddress::align_ptr_up(0, 1024));
     }
 
     #[test_case]
-    fn align_one_up() {
+    fn test_align_one_up() {
         assert_eq!(1024, VirtualAddress::align_ptr_up(1, 1024));
+    }
+
+    #[test_case]
+    fn test_from_index_and_indices() {
+        let addr = VirtualAddress::from_l4_index(16);
+        let indices = addr.indices();
+        assert_eq!(16, indices[0]);
     }
 }

@@ -9,6 +9,7 @@
 
 mod arch;
 mod debug;
+mod init;
 #[cfg(test)]
 mod testing;
 mod util;
@@ -37,5 +38,8 @@ fn _start(_boot_info: &'static BootInfo) -> ! {
     #[cfg(test)]
     test_main();
 
-    loop {}
+    #[cfg(not(test))]
+    init::init();
+
+    arch::x86_64::halt_loop();
 }

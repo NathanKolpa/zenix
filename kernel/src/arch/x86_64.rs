@@ -11,6 +11,7 @@ pub mod segmentation;
 mod tables;
 
 pub use halt::*;
+pub use init::init;
 pub use privilege::PrivilegeLevel;
 pub use rflags::RFlags;
 pub use tables::DescriptorTablePointer;

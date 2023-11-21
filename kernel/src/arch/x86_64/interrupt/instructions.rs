@@ -1,12 +1,14 @@
 use crate::arch::x86_64::RFlags;
 use core::arch::asm;
 
+/// (Atomically) enable interrupts.
 pub fn enable_interrupts() {
     unsafe {
         asm!("sti", options(nomem, nostack));
     }
 }
 
+/// (Atomically) disable interrupts
 pub fn disable_interrupts() {
     unsafe {
         asm!("cli", options(nomem, nostack));

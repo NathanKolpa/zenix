@@ -4,6 +4,8 @@
 #![test_runner(crate::testing::runner)]
 #![reexport_test_harness_main = "test_main"]
 #![feature(doc_cfg)]
+// TODO: remove when the kernel gets sufficiently complete.
+#![allow(dead_code)]
 
 mod arch;
 mod debug;

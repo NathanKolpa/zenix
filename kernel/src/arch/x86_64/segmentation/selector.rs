@@ -15,10 +15,17 @@ pub struct SegmentSelector {
 }
 
 impl SegmentSelector {
+    pub const fn empty() -> Self {
+        Self { value: 0 }
+    }
     pub const fn new(index: u16, privilege: PrivilegeLevel) -> Self {
         Self {
             value: index << 3 | privilege as u16,
         }
+    }
+
+    pub const fn as_u16(&self) -> u16 {
+        self.value
     }
 
     pub fn index(&self) -> u16 {

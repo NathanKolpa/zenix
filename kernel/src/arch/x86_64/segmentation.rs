@@ -11,7 +11,30 @@ mod segment;
 mod selector;
 mod tss;
 
-pub static TSS: TaskStateSegment = TaskStateSegment::new();
+pub const DOUBLE_FAULT_IST_INDEX: usize = 0;
+pub const PAGE_FAULT_IST_INDEX: usize = 1;
+
+fn init_tss() -> TaskStateSegment {
+    let mut tss = TaskStateSegment::new();
+
+    static mut DOUBLE_FAULT_STACK: [u8; 4096 * 16] = [0; 4096 * 16];
+
+    tss.interrupt_stack_table[DOUBLE_FAULT_IST_INDEX] =
+        TssStackPointer::from_slice(unsafe { &mut DOUBLE_FAULT_STACK });
+
+    static mut PAGE_FAULT_STACK: [u8; 4096 * 16] = [0; 4096 * 16];
+
+    tss.interrupt_stack_table[PAGE_FAULT_IST_INDEX] =
+        TssStackPointer::from_slice(unsafe { &mut PAGE_FAULT_STACK });
+
+    static mut PRIVILEGED_STACK: [u8; 4096 * 16] = [0; 4096 * 16]; // TODO: dynamically allocate this.
+
+    tss.privilege_stack_table[0] = TssStackPointer::from_slice(unsafe { &mut PRIVILEGED_STACK });
+
+    tss
+}
+
+pub static TSS: Singleton<TaskStateSegment> = Singleton::new(init_tss);
 
 pub struct FullGdt {
     pub table: GlobalDescriptorTable,

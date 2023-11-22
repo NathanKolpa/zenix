@@ -8,4 +8,8 @@ pub fn init() {
     debug_println!("Staring the Zenix operating system...");
     debug_println!("Architecture: {}", arch::NAME);
     debug_println!("Debug channel: {}", debug::DEBUG_CHANNEL);
+
+    unsafe {
+        core::ptr::write_volatile(0xdeadbeef as *mut u8, 10);
+    }
 }

@@ -4,6 +4,7 @@
 #![test_runner(crate::testing::runner)]
 #![reexport_test_harness_main = "test_main"]
 #![feature(doc_cfg)]
+#![feature(abi_x86_interrupt)]
 // TODO: remove when the kernel gets sufficiently complete.
 #![allow(dead_code)]
 
@@ -22,8 +23,9 @@ entry_point!(_start);
 /// The kernel panic handler during testing
 #[cfg(not(test))]
 #[panic_handler]
-fn panic(_info: &PanicInfo) -> ! {
-    loop {}
+fn panic(info: &PanicInfo) -> ! {
+    debug_println!("{info}");
+    arch::x86_64::halt_loop();
 }
 
 /// The kernel panic handler.

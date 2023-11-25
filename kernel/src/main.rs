@@ -11,6 +11,7 @@
 mod arch;
 mod debug;
 mod init;
+mod memory;
 #[cfg(test)]
 mod testing;
 mod util;
@@ -36,12 +37,12 @@ fn panic(info: &PanicInfo) -> ! {
 }
 
 /// The kernel entry point.
-fn _start(_boot_info: &'static BootInfo) -> ! {
+fn _start(boot_info: &'static BootInfo) -> ! {
     #[cfg(test)]
     test_main();
 
     #[cfg(not(test))]
-    init::init();
+    init::init(boot_info);
 
     arch::x86_64::halt_loop();
 }

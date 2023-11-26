@@ -1,4 +1,4 @@
-use crate::memory::alloc::{kernel_alloc, FRAME_ALLOC};
+use crate::memory::alloc::{kernel_alloc, MemoryInfo, FRAME_ALLOC};
 use crate::{arch, debug};
 use bootloader::BootInfo;
 
@@ -10,6 +10,7 @@ pub fn init(boot_info: &'static BootInfo) {
     debug_println!("Staring the Zenix operating system...");
     debug_println!("Architecture: {}", arch::NAME);
     debug_println!("Debug channel: {}", debug::DEBUG_CHANNEL);
+    debug_println!("{}", MemoryInfo::from_memory_map(&boot_info.memory_map));
 
     // Initializing the heap is also very important to do first.
     // Even the frame allocator uses the heap!
@@ -19,6 +20,8 @@ pub fn init(boot_info: &'static BootInfo) {
         &crate::util::display::ReadableSize::new(kernel_size)
     );
 
-    FRAME_ALLOC.init_with(&boot_info.memory_map);
-    debug_println!("{}", FRAME_ALLOC.info());
+    FRAME_ALLOC.init_with(
+        &boot_info.memory_map,
+        boot_info.physical_memory_offset.into(),
+    );
 }

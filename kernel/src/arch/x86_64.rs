@@ -4,6 +4,7 @@ pub mod device;
 mod halt;
 pub mod init;
 pub mod interrupt;
+pub mod paging;
 pub mod port;
 mod privilege;
 mod rflags;
@@ -16,4 +17,4 @@ pub use privilege::PrivilegeLevel;
 pub use rflags::RFlags;
 pub use tables::DescriptorTablePointer;
 
-pub const NAME: &'static str = "x86_64";
+pub const NAME: &str = "x86_64";

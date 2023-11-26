@@ -1,6 +1,6 @@
+use crate::memory::alloc::MemoryInfo;
 use bootloader::bootinfo::{MemoryMap, MemoryRegionType};
 
-use crate::memory::MemoryInfo;
 use crate::util::{FixedVec, PanicOnce};
 
 pub struct AllocatedFrame {

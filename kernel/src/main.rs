@@ -41,11 +41,10 @@ fn panic(info: &PanicInfo) -> ! {
 
 /// The kernel entry point.
 fn _start(boot_info: &'static BootInfo) -> ! {
+    init::init(boot_info);
+
     #[cfg(test)]
     test_main();
-
-    #[cfg(not(test))]
-    init::init(boot_info);
 
     arch::x86_64::halt_loop();
 }

@@ -1,4 +1,5 @@
 use core::cell::UnsafeCell;
+use core::fmt::{Debug, Formatter};
 use core::hint::spin_loop;
 use core::ops::{Deref, DerefMut};
 use core::sync::atomic::{AtomicBool, Ordering};
@@ -60,3 +61,13 @@ impl<T> SpinLock<T> {
 
 unsafe impl<T: Send + Sync> Sync for SpinLock<T> {}
 unsafe impl<T: Send> Send for SpinLock<T> {}
+
+impl<T> Debug for SpinLock<T>
+where
+    T: Debug,
+{
+    fn fmt(&self, f: &mut Formatter<'_>) -> core::fmt::Result {
+        let lock = self.lock();
+        write!(f, "{:?}", *lock)
+    }
+}

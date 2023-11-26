@@ -5,8 +5,11 @@
 #![reexport_test_harness_main = "test_main"]
 #![feature(doc_cfg)]
 #![feature(abi_x86_interrupt)]
+#![feature(const_mut_refs)]
 // TODO: remove when the kernel gets sufficiently complete.
 #![allow(dead_code)]
+
+extern crate alloc;
 
 mod arch;
 mod debug;

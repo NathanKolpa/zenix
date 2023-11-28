@@ -1,9 +1,14 @@
-use crate::memory::alloc::{kernel_alloc, MemoryInfo, FRAME_ALLOC};
-use crate::{arch, debug};
 use bootloader::BootInfo;
 
+use crate::memory::alloc::{kernel_alloc, MemoryInfo, FRAME_ALLOC};
+use crate::{arch, debug};
+
 /// Initialize and start the operating system.
-pub fn init(boot_info: &'static BootInfo) {
+///
+/// # Safety
+///
+/// The argument `boot_info` should contain a valid memory map for the machine.
+pub unsafe fn init(boot_info: &'static BootInfo) {
     // We should first initialize architecture specific stuff before anything else.
     arch::init();
 
@@ -22,7 +27,7 @@ pub fn init(boot_info: &'static BootInfo) {
 
     FRAME_ALLOC.init_with(
         &boot_info.memory_map,
-        boot_info.physical_memory_offset.into(),
+        boot_info.physical_memory_offset as usize,
     );
     // https://en.wikipedia.org/wiki/Non-blocking_linked_list
     // https://stackoverflow.com/questions/71316932/lock-free-stack-with-freelist-why-dont-the-next-pointers-need-to-be-atomic

@@ -41,7 +41,9 @@ fn panic(info: &PanicInfo) -> ! {
 
 /// The kernel entry point.
 fn _start(boot_info: &'static BootInfo) -> ! {
-    init::init(boot_info);
+    unsafe {
+        init::init(boot_info);
+    }
 
     #[cfg(test)]
     test_main();

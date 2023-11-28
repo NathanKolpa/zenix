@@ -1,22 +1,21 @@
 use alloc::vec;
 use alloc::vec::Vec;
+use core::cmp::{max, min};
 
 use bootloader::bootinfo::{MemoryMap, MemoryRegionType};
 
 use crate::util::address::{PhysicalAddress, VirtualAddress};
-use crate::util::{Bitmap, FixedVec, PanicOnce};
+use crate::util::display::ReadableSize;
+use crate::util::{Bitmap, PanicOnce};
 
-const MAX_ORDER: usize = 24; // TODO: how much do we need?
-const MIN_ORDER: usize = 12; // 4Kib granularity.
-
-const ORDER_CAP: usize = MAX_ORDER - MIN_ORDER;
+const MIN_ORDER: u8 = 12; // 4Kib granularity.
 
 /// Same abstraction as a [Linux zone](https://litux.nl/mirror/kerneldevelopment/0672327201/ch11lev1sec2.html).
 struct Zone {
     addr_start: PhysicalAddress,
     addr_end: PhysicalAddress,
 
-    free_list: FixedVec<ORDER_CAP, Level>,
+    free_list: Vec<Level>, // TODO: add this to the eternal alloc
     physical_memory_offset: VirtualAddress,
 }
 
@@ -29,11 +28,33 @@ impl Zone {
         assert!(addr_end > addr_start);
         assert!((addr_end - addr_start).as_usize() > 0);
 
-        let mut free_list = FixedVec::new();
+        let total_size = (addr_end - addr_start).as_usize();
+        let largest_order = Self::order_of_down(total_size);
 
-        for order in 0..MAX_ORDER {
-            free_list.push(Level::empty(order as u8))
+        assert!(largest_order >= MIN_ORDER);
+
+        let level_count = (largest_order - MIN_ORDER) as usize;
+
+        let mut free_list = Vec::with_capacity(level_count + 1);
+
+        for order in MIN_ORDER..=largest_order {
+            debug_println!(
+                "{} {order} {}",
+                ReadableSize::new(total_size),
+                ReadableSize::new(2usize.pow(order as u32))
+            );
+            free_list.push(Level::new(order, largest_order))
         }
+
+        // TODO: figure out what to do with wasted space.
+        // idea,
+        // say we have 119 Mib
+        // we dont want to downgrade the tree to only 64 MiB.
+        // Instead we round up to 128 Mib, then we initialize with:
+        // level 128 Mib => allocated.
+        // Level 64 Mib (left) => allocated | add that chunk to the free list | we have 55 Mib left.
+        // Level 32 Mib (left) => allocated | add that chunk to the free list | we have 23 Mib Left.
+        // so on and so forth..
 
         Self {
             addr_start,
@@ -45,12 +66,12 @@ impl Zone {
 
     pub fn allocate(&mut self, size: usize) -> Option<(PhysicalAddress, usize)> {
         let size = size.next_power_of_two();
-        let _order = Self::order_of(size);
+        let _order = Self::order_of_up(size);
 
         todo!()
     }
 
-    fn order_of(size: usize) -> u8 {
+    fn order_of_up(size: usize) -> u8 {
         assert!(size.is_power_of_two());
 
         let mut result = 0u8;
@@ -63,27 +84,48 @@ impl Zone {
 
         result
     }
-}
 
+    fn order_of_down(size: usize) -> u8 {
+        if size <= 1 {
+            return 0;
+        }
+
+        let mut power = 1;
+        let mut order = 0;
+
+        while power * 2 <= size {
+            power <<= 1;
+            order += 1;
+        }
+
+        order
+    }
+}
 struct FreeListNode {
     next: Option<PhysicalAddress>,
 }
 
 struct Level {
     free_list: Option<PhysicalAddress>,
-
+    order: u8,
     bitmap: Bitmap<Vec<u8>>, // TODO: add this to the eternal alloc
 }
 
 impl Level {
-    pub fn empty(order: u8) -> Self {
-        let bits = 2usize.pow((MAX_ORDER - order as usize) as u32);
-        let cap = (bits + 8 - 1) / 8; // div ceil 8 the number of bits
+    pub fn new(order: u8, largest_order: u8) -> Self {
+        let bits = 2usize.pow(((largest_order - order) as usize) as u32);
+        debug_println!("bits: {bits}");
+        let bytes = (bits + 8 - 1) / 8; // div ceil 8 the number of bits
 
         Self {
             free_list: None,
-            bitmap: Bitmap::new(vec![0; cap]),
+            order,
+            bitmap: Bitmap::new(vec![0; bytes]),
         }
+    }
+
+    pub fn size(&self) -> usize {
+        2usize.pow(self.order as u32)
     }
 }
 

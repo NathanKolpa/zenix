@@ -24,4 +24,14 @@ pub fn init(boot_info: &'static BootInfo) {
         &boot_info.memory_map,
         boot_info.physical_memory_offset.into(),
     );
+    // https://en.wikipedia.org/wiki/Non-blocking_linked_list
+    // https://stackoverflow.com/questions/71316932/lock-free-stack-with-freelist-why-dont-the-next-pointers-need-to-be-atomic
+    // https://os.phil-opp.com/paging-implementation/#map-the-complete-physical-memory
+    // https://nfil.dev/kernel/rust/coding/rust-buddy-allocator/
+    // https://github.com/red-rocket-computing/buddy-alloc/blob/master/doc/bitsquid-buddy-allocator-design.md
+    // https://github.com/torvalds/linux/blob/master/include/linux/mm.h
+    // https://litux.nl/mirror/kerneldevelopment/0672327201/ch11lev1sec2.html
+    // https://www.geeksforgeeks.org/power-of-two-free-lists-allocators-kernal-memory-allocators/
+    // https://wiki.osdev.org/Page_Frame_Allocation
+    // https://www.youtube.com/watch?v=DRAHRJEAEso&t=838s
 }

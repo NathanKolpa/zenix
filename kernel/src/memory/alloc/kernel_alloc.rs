@@ -3,6 +3,7 @@ use core::fmt::{Debug, Formatter};
 use core::mem::{align_of, size_of, MaybeUninit};
 
 use crate::util::address::VirtualAddress;
+use crate::util::display::ReadableSize;
 use crate::util::spin::SpinLock;
 
 const HEAP_SIZE: usize = 1024 * 1024;
@@ -154,6 +155,11 @@ impl<'a> KernelAlloc<'a> {
 
 unsafe impl GlobalAlloc for KernelAlloc<'_> {
     unsafe fn alloc(&self, layout: Layout) -> *mut u8 {
+        debug_println!(
+            "KERNEL_ALLOC: requesting {}",
+            ReadableSize::new(layout.size())
+        );
+
         let layout = Self::size_align(layout);
         let mut head = self.head.lock();
 
@@ -172,6 +178,10 @@ unsafe impl GlobalAlloc for KernelAlloc<'_> {
     }
 
     unsafe fn dealloc(&self, ptr: *mut u8, layout: Layout) {
+        debug_println!(
+            "KERNEL_ALLOC: releasing {}",
+            ReadableSize::new(layout.size())
+        );
         let layout = Self::size_align(layout);
         self.add_free_region(ptr as usize, layout.size());
     }

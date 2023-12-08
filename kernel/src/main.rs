@@ -11,13 +11,13 @@
 
 extern crate alloc;
 
-mod arch;
-mod debug;
-mod init;
-mod memory;
+pub mod arch;
+pub mod debug;
+pub mod init;
+pub mod memory;
 #[cfg(test)]
-mod testing;
-mod util;
+pub mod testing;
+pub mod util;
 
 use bootloader::{entry_point, BootInfo};
 use core::panic::PanicInfo;

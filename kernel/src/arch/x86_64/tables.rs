@@ -1,6 +1,6 @@
 use crate::util::address::VirtualAddress;
 
-/// A descriptor table pointer, can either point to a [`super::segmentation::GlobalDescriptorTable`] or [`super::interrupts::InterruptDescriptorTable`].
+/// A descriptor table pointer, can either point to a [`super::segmentation::GlobalDescriptorTable`] or [`super::interrupt::InterruptDescriptorTable`].
 #[derive(Clone, Copy)]
 #[repr(C, packed(2))]
 pub struct DescriptorTablePointer {

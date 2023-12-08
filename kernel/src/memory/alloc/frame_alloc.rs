@@ -5,27 +5,27 @@
 //! There are many flavours of the Buddy System, the [`FrameAllocator`] uses a version that the
 //! [the Linux kernel also uses](https://www.kernel.org/doc/gorman/html/understand/understand009.html).
 //!
-//! # Heap usage.
+//! # Heap usage
 //!
-//! Ironically memory is needed to keep track of memory.
+//! Ironically, memory is needed to keep track of memory.
 //! Because the kernel heap does not dynamically allocate frames it is perfectly fine to use.
-//! The heap usage consists of only allocations without resizes or deletes but can vary at run time
-//! based on the memory.
+//! The heap usage within this module only consists of allocations at initialization without resizes or deletes
+//! but can vary in size based on the machine's memory.
 //!
 //! # Overview
 //!
-//! The memory that is available single flat line,
+//! The memory that is available is not represented as a single flat line,
 //! instead the bootloader gives us a list of usable regions.
 //! Each region gets its own "heap", we call this a [`Zone`]
 //! ([the same name that linux uses](https://litux.nl/mirror/kerneldevelopment/0672327201/ch11lev1sec2.html)).
 //!
 //! Within each zone: TODO
 //!
-//! ## Initialization
+//! ### Initialization
 //!
 //! The algorithm requires that all blocks are a power of two.
 //! For region sizes, this is almost never the case.
-//! A solution to this problem is to round down to the previous power of two.
+//! A naive solution to this problem is to round down to the previous power of two.
 //! Lets say we have 119 Mib (an actual region size from qemu),
 //! then rounding down to 64 Mib would cost us
 //! almost half our memory!
@@ -33,8 +33,11 @@
 //! This problem can be solved by allowing incomplete blocks:
 //! First the region size is rounded up to the next nearest power of two
 //! so that 119 Mib would become 128 MiB.
-//! Then, for each level we take a piece of usable memory and make it available by adding it to the level's free list.
-//! And avoid coalescing incomplete blocks when deallocating, each link listed block's buddy is marked as allocated.
+//! Then,
+//! for each level we take a piece of usable memory
+//! and make it available by adding it to the level's free list.
+//! And avoid to coalescing incomplete blocks when deallocating,
+//! each link listed block's buddy is marked as allocated.
 //! If a piece memory doesnt' fit in a level, we mark it as allocated and move on.
 //! We repeat the above steps until there is no more usable memory left.
 //!
@@ -54,7 +57,7 @@
 //! . = Neither in the bitmap or free list.
 //! ```
 
-//! ## Allocation
+//! ### Allocation
 //!
 //! We first round up the `size` of the request to the next nearest power of two.
 //! Say a request of 5000 is made, the allocation is rounded up to 8192 bytes.

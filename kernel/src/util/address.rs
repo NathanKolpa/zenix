@@ -73,18 +73,22 @@ impl<L> Address<L> {
 
 /// A wrapper for physical addresses.
 impl Address<PhysicalAddressMarker> {
-    pub fn align_down(&mut self, align: usize) {
+    pub fn align_down(&self, align: usize) -> Self {
         assert!(align.is_power_of_two(), "`align` must be a power of two");
-        self.addr = Self::align_ptr_down(self.addr, align)
+        Self::new(Self::align_ptr_down(self.addr, align))
     }
 }
 
 /// A wrapper for virtual addresses, or normal pointers.
 impl Address<VirtualAddressMarker> {
-    pub fn align_down(&mut self, align: usize) {
+    pub fn align_down(&self, align: usize) -> Self {
         assert!(align.is_power_of_two(), "`align` must be a power of two");
-        self.addr = Self::align_ptr_down(self.addr, align);
-        self.addr = ((self.addr << 16) as isize >> 16) as usize
+
+        let mut addr = self.addr;
+        addr = Self::align_ptr_down(addr, align);
+        addr = ((addr << 16) as isize >> 16) as usize;
+
+        Self::new(addr)
     }
 
     #[cfg(target_arch = "x86_64")]

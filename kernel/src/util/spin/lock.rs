@@ -59,6 +59,12 @@ impl<T> SpinLock<T> {
     }
 }
 
+impl<T> AsMut<T> for SpinLock<T> {
+    fn as_mut(&mut self) -> &mut T {
+        unsafe { &mut *self.data.get() }
+    }
+}
+
 unsafe impl<T: Send + Sync> Sync for SpinLock<T> {}
 unsafe impl<T: Send> Send for SpinLock<T> {}
 

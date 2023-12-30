@@ -24,7 +24,7 @@ use core::panic::PanicInfo;
 
 entry_point!(_start);
 
-/// The kernel panic handler during testing
+/// The kernel panic handler.
 #[cfg(not(test))]
 #[panic_handler]
 fn panic(info: &PanicInfo) -> ! {
@@ -32,11 +32,11 @@ fn panic(info: &PanicInfo) -> ! {
     arch::x86_64::halt_loop();
 }
 
-/// The kernel panic handler.
+/// The kernel panic handler during testing.
 #[cfg(test)]
 #[panic_handler]
 fn panic(info: &PanicInfo) -> ! {
-    crate::testing::panic_handler(info)
+    testing::panic_handler(info)
 }
 
 /// The kernel entry point.

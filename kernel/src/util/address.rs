@@ -38,6 +38,13 @@ impl<L> Address<L> {
         }
     }
 
+    pub const fn null() -> Self {
+        Self {
+            addr: 0,
+            _phantom: PhantomData,
+        }
+    }
+
     /// Aligns a memory address upwards to the specified alignment.
     ///
     /// # Parameters
@@ -68,6 +75,14 @@ impl<L> Address<L> {
 
     pub fn as_usize(&self) -> usize {
         self.addr
+    }
+
+    pub fn is_aligned_with(&self, value: usize) -> bool {
+        self.addr % value == 0
+    }
+
+    pub fn is_null(&self) -> bool {
+        self.addr == 0
     }
 }
 

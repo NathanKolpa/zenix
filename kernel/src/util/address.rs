@@ -62,14 +62,14 @@ impl<L> Address<L> {
     ///
     /// - `addr`: The memory address to be aligned.
     /// - `align`: The alignment value. It must be a power of two, otherwise, the function will panic.
-    pub fn align_ptr_down(addr: usize, align: usize) -> usize {
+    pub const fn align_ptr_down(addr: usize, align: usize) -> usize {
         assert!(align.is_power_of_two(), "`align` must be a power of two");
         addr & !(align - 1)
     }
 
     #[cfg(target_arch = "x86_64")]
     #[doc(cfg(target_arch = "x86_64"))]
-    pub fn as_u64(&self) -> u64 {
+    pub const fn as_u64(&self) -> u64 {
         self.addr as u64
     }
 
@@ -96,7 +96,7 @@ impl Address<PhysicalAddressMarker> {
 
 /// A wrapper for virtual addresses, or normal pointers.
 impl Address<VirtualAddressMarker> {
-    pub fn align_down(&self, align: usize) -> Self {
+    pub const fn align_down(&self, align: usize) -> Self {
         assert!(align.is_power_of_two(), "`align` must be a power of two");
 
         let mut addr = self.addr;

@@ -4,7 +4,9 @@ pub struct PageTableEntryFlags {
 }
 
 impl PageTableEntryFlags {
-    pub const fn from_page_table_entry_value(value: u64) {}
+    pub const fn new(value: u64) -> Self {
+        Self { value }
+    }
 
     pub const fn null() -> Self {
         Self { value: 0 }

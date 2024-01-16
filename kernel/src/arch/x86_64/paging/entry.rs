@@ -1,4 +1,4 @@
-use core::fmt::{Debug, Display, Formatter};
+use core::fmt::{Debug, Formatter};
 
 use crate::arch::x86_64::paging::PageTableEntryFlags;
 use crate::util::address::PhysicalAddress;

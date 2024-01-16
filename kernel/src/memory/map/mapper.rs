@@ -1,7 +1,8 @@
 pub use errors::*;
 pub use props::MemoryProperties;
 
-use crate::util::address::VirtualAddress;
+use crate::arch::x86_64::paging::cr3;
+use crate::util::address::{PhysicalAddress, VirtualAddress};
 
 mod errors;
 mod props;
@@ -10,9 +11,27 @@ mod props;
 ///
 /// # Ownership
 ///
-pub struct MemoryMapper {}
+pub struct MemoryMapper {
+    l4_table: PhysicalAddress,
+    global_offset: usize,
+}
 
 impl MemoryMapper {
+    /// Create a new `MemoryMapper` instance from the current `CR3` register value.
+    ///
+    /// # Safety
+    ///
+    /// - This function assumes the `global_offset` is valid for the current machine.
+    /// - Creating more than one instance though this function can lead to UB because borrow checking is not preformed.
+    pub unsafe fn from_active_page(global_offset: usize) -> Self {
+        let l4_table = cr3::active_page();
+
+        Self {
+            global_offset,
+            l4_table,
+        }
+    }
+
     /// Map a region of virtual memory.
     ///
     /// # Arguments

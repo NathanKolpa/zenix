@@ -1,40 +1,10 @@
-use crate::memory::alloc::FRAME_ALLOC;
+pub use errors::*;
+pub use props::MemoryProperties;
+
 use crate::util::address::VirtualAddress;
 
-#[derive(Debug, Copy, Clone)]
-pub struct MemoryProperties {
-    writable: bool,
-    readable: bool,
-    kernel: bool,
-    executable: bool,
-}
-
-impl MemoryProperties {
-    pub const fn new(writable: bool, readable: bool, kernel: bool, executable: bool) -> Self {
-        Self {
-            writable,
-            readable,
-            kernel,
-            executable,
-        }
-    }
-}
-
-pub enum NewMapError {
-    NotOwned,
-    OutOfFrames,
-    AlreadyMapped,
-}
-
-pub enum ModifyMapError {
-    NotOwned,
-    NotMapped,
-}
-
-pub enum ReadMapError {
-    NotMapped,
-    InconsistentRange,
-}
+mod errors;
+mod props;
 
 /// The `MemoryMapper` struct manages the low-level mappings between physical and virtual addresses.
 ///

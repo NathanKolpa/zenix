@@ -1,2 +1,2 @@
-mod mem_manager;
-mod mem_mapper;
+pub mod manager;
+pub mod mapper;

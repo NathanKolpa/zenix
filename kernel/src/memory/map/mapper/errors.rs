@@ -11,5 +11,5 @@ pub enum ModifyMapError {
 
 pub enum ReadMapError {
     NotMapped,
-    InconsistentRange,
+    InconsistencyWithinRange,
 }

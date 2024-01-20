@@ -2,29 +2,28 @@ use crate::arch::x86_64::port::*;
 use crate::util::spin::SpinLock;
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
-#[repr(u32)]
+#[repr(u8)]
 pub enum ExitCode {
-    Success = 0x10,
-    Failed = 0x11,
+    Success = 19,
+    Failed = 33,
 }
-
 pub struct Qemu {
-    port: Port<u32, WriteOnly>,
+    exit: Port<u8, WriteOnly>,
 }
 
 impl Qemu {
     pub const unsafe fn new() -> Self {
         Self {
-            port: Port::write_only(0xf4),
+            exit: Port::write_only(0x501),
         }
     }
 
     pub fn exit(&mut self, code: ExitCode) -> ! {
         unsafe {
-            self.port.write(code as u32);
+            self.exit.write((code as u8) >> 1 | 1);
         }
 
-        loop {}
+        panic!("Processor still running after requesting QEMU exit. Are you rinning in a qemu emulator? Or have you forgot to  include the '-device isa-debug-exit' flag?");
     }
 }
 

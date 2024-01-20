@@ -5,8 +5,9 @@ use core::mem::{align_of, size_of, MaybeUninit};
 use crate::util::address::VirtualAddress;
 use crate::util::spin::SpinLock;
 
-const HEAP_SIZE: usize = 1024 * 1024;
-static mut BACKING: [MaybeUninit<u64>; HEAP_SIZE / 8] = [MaybeUninit::uninit(); HEAP_SIZE / 8]; // we must align the backing with the FreeNode hence, MaybeUninit<u64>
+pub const INITIAL_HEAP_SIZE: usize = 1024 * 1024;
+static mut BACKING: [MaybeUninit<u64>; INITIAL_HEAP_SIZE / 8] =
+    [MaybeUninit::uninit(); INITIAL_HEAP_SIZE / 8]; // we must align the backing with the FreeNode hence, MaybeUninit<u64>
 
 static BACKING_REF: SpinLock<Option<&'static mut [MaybeUninit<u64>]>> =
     SpinLock::new(Some(unsafe { &mut BACKING }));
@@ -22,7 +23,7 @@ pub fn init_heap() -> usize {
 
     if let Some(backing_ref) = backing_ref.take() {
         KERNEL_ALLOC.add_backing(backing_ref);
-        HEAP_SIZE
+        INITIAL_HEAP_SIZE
     } else {
         0
     }
@@ -209,7 +210,7 @@ mod tests {
 
     #[test_case]
     fn test_reuse_more_then_the_entire_heap() {
-        for i in 0..HEAP_SIZE {
+        for i in 0..INITIAL_HEAP_SIZE {
             let value = Box::new(i);
             assert_eq!(*value, i);
         }

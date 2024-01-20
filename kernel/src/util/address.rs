@@ -45,6 +45,13 @@ impl<L> Address<L> {
         }
     }
 
+    pub const fn max() -> Self {
+        Self {
+            addr: usize::MAX,
+            _phantom: PhantomData,
+        }
+    }
+
     /// Aligns a memory address upwards to the specified alignment.
     ///
     /// # Parameters
@@ -168,6 +175,17 @@ impl Address<VirtualAddressMarker> {
     pub fn from_l4_index(index: u16) -> Self {
         Self::new((index as usize) << (12 + 9 + 9 + 9))
     }
+
+    #[doc(cfg(target_arch = "x86_64"))]
+    #[cfg(target_arch = "x86_64")]
+    pub fn from_indices(indices: [u16; 4]) -> Self {
+        Self::new(
+            (indices[0] as usize) << (12 + 9 + 9 + 9)
+                | (indices[1] as usize) << (12 + 9 + 9)
+                | (indices[2] as usize) << (12 + 9)
+                | (indices[3] as usize) << (12),
+        )
+    }
 }
 
 impl<T> Add<usize> for Address<T> {
@@ -226,9 +244,9 @@ impl<L, T> From<*mut T> for Address<L> {
     }
 }
 
-impl<L> Into<usize> for Address<L> {
-    fn into(self) -> usize {
-        self.addr
+impl<L> From<Address<L>> for usize {
+    fn from(val: Address<L>) -> Self {
+        val.addr
     }
 }
 
@@ -285,5 +303,16 @@ mod tests {
         let addr = VirtualAddress::from_l4_index(16);
         let indices = addr.indices();
         assert_eq!(16, indices[0]);
+    }
+
+    #[test_case]
+    fn test_from_indices() {
+        let addr = VirtualAddress::new(0xdeadbeef);
+
+        let source_indices = addr.indices();
+        let new_addr = VirtualAddress::from_indices(source_indices);
+        let new_indices = new_addr.indices();
+
+        assert_eq!(source_indices, new_indices);
     }
 }

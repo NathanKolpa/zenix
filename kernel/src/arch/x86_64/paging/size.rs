@@ -19,6 +19,14 @@ impl PageSize {
         }
     }
 
+    pub const fn acend_level(&self) -> Self {
+        match self {
+            PageSize::Size4Kib => PageSize::Size2Mib,
+            PageSize::Size2Mib => PageSize::Size1Gib,
+            PageSize::Size1Gib => PageSize::Size1Gib,
+        }
+    }
+
     pub const fn as_usize(&self) -> usize {
         match self {
             PageSize::Size4Kib => FOUR_KIB,

@@ -15,4 +15,24 @@ impl MemoryProperties {
             executable,
         }
     }
+
+    pub const fn writable(&self) -> bool {
+        self.writable
+    }
+
+    pub const fn readable(&self) -> bool {
+        self.readable
+    }
+
+    pub const fn kernel(&self) -> bool {
+        self.kernel
+    }
+
+    pub const fn user(&self) -> bool {
+        !self.kernel()
+    }
+
+    pub const fn executable(&self) -> bool {
+        self.executable
+    }
 }

@@ -1,5 +1,6 @@
 pub use entry::*;
 pub use flags::*;
+pub use page_table::*;
 pub use size::*;
 
 pub mod cr3;

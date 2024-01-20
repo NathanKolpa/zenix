@@ -1,6 +1,11 @@
+use core::usize;
+
 use bootloader::BootInfo;
 
-use crate::memory::alloc::{kernel_alloc, MemoryInfo, FRAME_ALLOC};
+use crate::memory::{
+    alloc::{kernel_alloc, MemoryInfo, FRAME_ALLOC},
+    map::mapper::MemoryMapper,
+};
 use crate::{arch, debug};
 
 /// Initialize and start the operating system.
@@ -29,4 +34,9 @@ pub unsafe fn init(boot_info: &'static BootInfo) {
         &boot_info.memory_map,
         boot_info.physical_memory_offset as usize,
     );
+
+    let mut root_mapper = MemoryMapper::from_active_page(boot_info.physical_memory_offset as usize);
+    root_mapper.share_all();
+
+    debug_println!("{}", root_mapper.tree_display(Some(0)));
 }

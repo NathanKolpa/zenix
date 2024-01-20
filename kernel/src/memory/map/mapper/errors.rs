@@ -4,6 +4,7 @@ pub enum NewMapError {
     AlreadyMapped,
 }
 
+#[derive(Debug)]
 pub enum ModifyMapError {
     NotOwned,
     NotMapped,

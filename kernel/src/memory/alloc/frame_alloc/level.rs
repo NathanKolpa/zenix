@@ -45,6 +45,11 @@ impl Level {
 
     pub fn is_within_allocated_block(&self, addr: PhysicalAddress) -> bool {
         let addr = addr.align_down(self.block_size());
+
+        if addr < self.base {
+            return false;
+        }
+
         let bit = self.bit_in_bitmap(addr);
         self.bitmap.contains(bit)
     }

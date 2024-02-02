@@ -11,6 +11,7 @@ use super::MIN_ORDER;
 pub struct Zone {
     addr_start: PhysicalAddress,
     addr_end: PhysicalAddress,
+    physical_memory_offset: usize,
 
     available: AtomicUsize,
     levels: Vec<SpinLock<Level>>, // TODO: add this to the eternal alloc
@@ -46,6 +47,7 @@ impl Zone {
         Self::distribute_unused_memory(addr_start, total_size, largest_order, &mut levels);
 
         Self {
+            physical_memory_offset,
             addr_start,
             addr_end,
             levels,
@@ -97,6 +99,23 @@ impl Zone {
         } else {
             level_lock.push_free_block(aligned_addr);
         }
+    }
+
+    pub fn allocate_zeroed(&self, size: usize) -> Option<(PhysicalAddress, usize)> {
+        let (addr, size) = self.allocate(size)?;
+
+        let bytes = unsafe {
+            core::slice::from_raw_parts_mut(
+                (addr.as_usize() + self.physical_memory_offset) as *mut u8,
+                size,
+            )
+        };
+
+        for byte in bytes {
+            *byte = 0;
+        }
+
+        Some((addr, size))
     }
 
     pub fn allocate(&self, size: usize) -> Option<(PhysicalAddress, usize)> {

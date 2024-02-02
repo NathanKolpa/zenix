@@ -23,7 +23,7 @@ pub unsafe fn init(boot_info: &'static BootInfo) {
     debug_println!("Staring the Zenix operating system...");
     debug_println!("Architecture: {}", arch::NAME);
     debug_println!("Debug channel: {}", debug::DEBUG_CHANNEL);
-    debug_println!("{}", MemoryInfo::from_memory_map(&boot_info.memory_regions));
+    debug_println!("{}", MemoryInfo::from_boot_info(boot_info));
 
     let phys_mem_offset = boot_info
         .physical_memory_offset
@@ -44,5 +44,18 @@ pub unsafe fn init(boot_info: &'static BootInfo) {
     let mut root_mapper = MemoryMapper::from_active_page(phys_mem_offset);
     root_mapper.share_all();
 
-    debug_println!("{}", root_mapper.tree_display(Some(0)));
+    let test_map = VirtualAddress::new(100000000000000);
+    let test_size = 4096;
+    let (addr, size) = root_mapper
+        .map(
+            test_map,
+            test_size,
+            MemoryProperties::new(false, true, true, false),
+        )
+        .unwrap();
+
+    debug_println!("Alloc of {size} at {addr}");
+
+    debug_println!("{}", root_mapper.tree_display(test_map, test_size, None));
+    debug_println!("Graceull exit");
 }

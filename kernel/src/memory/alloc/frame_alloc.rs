@@ -141,11 +141,30 @@ impl FrameAllocator {
     /// When the request could be satisfied the function returns `Some` containing a tuple with the following elements:
     /// - The physical address of the start of the newly allocated block.
     /// - The size of the allocated block. This is guaranteed to be at least the size of the `size` argument or larger.
-    ///
-    ///
     pub fn allocate(&self, size: usize) -> Option<(PhysicalAddress, usize)> {
         let size = size.next_power_of_two();
         self.zones.iter().find_map(|zone| zone.allocate(size))
+    }
+
+    /// Allocate a block of physical memory with every byte set to zero.
+    ///
+    /// This preforms the exact same operation as [`allocate`]. However, at the end it writes zero
+    /// before returing the new block of memory.
+    ///
+    /// # Panics
+    ///
+    /// This function will panic when it is called before [`FrameAllocator::init_with`]
+    ///
+    /// # Returns
+    ///
+    /// When the request could be satisfied the function returns `Some` containing a tuple with the following elements:
+    /// - The physical address of the start of the newly allocated block.
+    /// - The size of the allocated block. This is guaranteed to be at least the size of the `size` argument or larger.
+    pub fn allocate_zeroed(&self, size: usize) -> Option<(PhysicalAddress, usize)> {
+        let size = size.next_power_of_two();
+        self.zones
+            .iter()
+            .find_map(|zone| zone.allocate_zeroed(size))
     }
 
     /// Deallocate a block of physical memory.

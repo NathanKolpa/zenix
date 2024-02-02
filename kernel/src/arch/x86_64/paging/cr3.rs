@@ -18,3 +18,8 @@ pub unsafe fn set_active_page(page_addr: PhysicalAddress) {
     // clears out the add, without removing the flags.
     asm!("and cr3, {}", in(reg) value, options(nostack, preserves_flags));
 }
+
+pub unsafe fn flush_page(page_addr: PhysicalAddress) {
+    let addr = page_addr.as_usize() as u64;
+    asm!("invlpg [{}]", in(reg) addr, options(nostack, preserves_flags));
+}

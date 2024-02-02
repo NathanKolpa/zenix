@@ -3,7 +3,7 @@ use core::{fmt::Display, u16};
 pub use errors::*;
 pub use props::MemoryProperties;
 
-use crate::{arch::x86_64::paging::*, util::FixedVec};
+use crate::{arch::x86_64::paging::*, memory::alloc::FRAME_ALLOC, util::FixedVec};
 use crate::{
     memory::map::mapper::tree_display::MemoryMapTreeDisplay,
     util::address::{PhysicalAddress, VirtualAddress},
@@ -18,6 +18,9 @@ struct NavigateCtx {
     depth: u8,
     is_last_present_entry: bool,
     entry_index: u16,
+    points_to_backing: bool,
+    addr: VirtualAddress,
+    size: usize,
 }
 
 const BORROW_BIT: u64 = 0;
@@ -71,15 +74,15 @@ impl MemoryMapper {
     /// kernel memory. Because this memory never needs to be deallocated, this leaked memory will
     /// never cause any problem.
     pub fn share_all(&mut self) {
-        let share_entry = |ctx: NavigateCtx| {
+        let share_entry = |ctx: NavigateCtx, _| -> Result<Option<PageTableEntry>, ModifyMapError> {
             let mut entry = ctx.entry;
-            if entry.flags().custom::<BORROW_BIT>() {
-                return None;
+            if entry.flags().custom::<BORROW_BIT>() || !entry.flags().present() {
+                return Ok(None);
             }
 
             entry.set_flags(entry.flags().set_custom::<BORROW_BIT>(true));
 
-            Some(entry)
+            Ok(Some(entry))
         };
 
         unsafe {
@@ -90,9 +93,10 @@ impl MemoryMapper {
                 usize::MAX,
                 Some(0),
                 false,
+                false,
                 share_entry,
             )
-            .unwrap()
+            .unwrap();
         }
     }
 
@@ -112,9 +116,43 @@ impl MemoryMapper {
         address: VirtualAddress,
         size: usize,
         properties: MemoryProperties,
-    ) -> Result<usize, NewMapError> {
+    ) -> Result<(VirtualAddress, usize), NewMapError> {
         let flags = Self::props_to_flags(properties, true);
-        todo!()
+
+        // TODO: when FRAME_ALLOC::allocate returns none, we should go back and dealloc the created
+        // frames.
+        let mut total_size = 0;
+        let alloc_missing = |ctx: NavigateCtx,
+                             huge_size: Option<PageSize>|
+         -> Result<Option<PageTableEntry>, NewMapError> {
+            let mut entry = ctx.entry;
+            let mut flags = entry.flags() | flags;
+
+            let request_size = huge_size.unwrap_or(PageSize::Size4Kib);
+
+            if !entry.flags().present() {
+                if huge_size.is_some() {
+                    flags = flags.set_huge(true);
+                }
+
+                let (frame_addr, _) = FRAME_ALLOC
+                    .allocate_zeroed(request_size.as_usize())
+                    .ok_or(NewMapError::OutOfFrames)?;
+
+                entry.set_addr(frame_addr);
+            }
+
+            if ctx.points_to_backing {
+                total_size += request_size.as_usize();
+            }
+
+            entry.set_flags(flags);
+            Ok(Some(entry))
+        };
+
+        let start = unsafe { self.navigate_mut(address, size, None, true, false, alloc_missing) }?;
+
+        Ok((start, total_size))
     }
 
     pub unsafe fn unmap(&mut self, size: usize) -> Result<(), ModifyMapError> {
@@ -152,7 +190,7 @@ impl MemoryMapper {
         loop {
             let current_addr = VirtualAddress::from_indices(start_indices);
 
-            if current_addr > end {
+            if current_addr >= end {
                 break;
             }
 
@@ -176,67 +214,94 @@ impl MemoryMapper {
                 table_stack.pop();
                 *entry_index = 0;
                 last_entry_index = -1;
+
+                if let Some(prev) = table_index
+                    .checked_sub(2)
+                    .and_then(|prev_index| start_indices.get_mut(prev_index))
+                {
+                    *prev += 1;
+                }
+
                 continue;
             };
 
             let entry = *entry_ref;
 
             let ctx = NavigateCtx {
+                addr: current_addr,
                 entry,
                 depth: table_index as u8 - 1,
                 is_last_present_entry: *entry_index == last_entry_index as u16,
                 entry_index: *entry_index,
+                size: 4096 * 512usize.pow(4u32.saturating_sub(table_index as u32)),
+                points_to_backing: (entry.flags().huge() && entry.flags().present())
+                    || table_index == 4,
             };
 
             apply(ctx)?;
-
-            *entry_index = entry_index.wrapping_add(1);
 
             let entry = *entry_ref;
             if entry.flags().present() && table_stack.len() <= max_depth && !entry.flags().huge() {
                 let table = unsafe { self.deref_page_table(entry.addr()) };
                 table_stack.push(table);
                 last_entry_index = -1;
+            } else {
+                *entry_index += 1;
             }
         }
 
         Ok(())
     }
 
-    unsafe fn navigate_mut(
+    unsafe fn navigate_mut<E>(
         &mut self,
         start: VirtualAddress,
         size: usize,
         max_depth: Option<usize>,
         fail_on_unowned: bool,
-        mut apply: impl FnMut(NavigateCtx) -> Option<PageTableEntry>,
-    ) -> Result<(), ModifyMapError> {
+        fail_on_missing: bool,
+        mut apply: impl FnMut(NavigateCtx, Option<PageSize>) -> Result<Option<PageTableEntry>, E>,
+    ) -> Result<VirtualAddress, E>
+    where
+        E: From<ModifyMapError>,
+    {
         let max_depth = max_depth.unwrap_or(3).min(3);
         let end = start + size;
 
         let mut start_indices = start.indices();
+        let start_addr = VirtualAddress::from_indices(start_indices);
 
-        let mut table_stack = FixedVec::<4, &mut PageTable>::new();
-        table_stack.push(self.deref_l4_table_mut());
+        let mut table_stack = FixedVec::<4, (&mut PageTable, PhysicalAddress)>::new();
+        table_stack.push((self.deref_l4_table_mut(), self.l4_table));
 
         let mut last_entry_index = -1;
 
         loop {
             let current_addr = VirtualAddress::from_indices(start_indices);
 
-            if current_addr > end {
+            if current_addr >= end {
                 break;
             }
 
             let table_index = table_stack.len();
             let table_level = 4 - table_index + 1;
-            let size = match table_level {
-                2 => PageSize::Size2Mib,
-                3 => PageSize::Size1Gib,
-                _ => PageSize::Size4Kib,
+
+            let entry_range = match table_level {
+                2 => Some(PageSize::Size2Mib),
+                3 => Some(PageSize::Size1Gib),
+                1 => Some(PageSize::Size4Kib),
+                _ => None,
             };
 
-            let Some(table) = table_stack.last_mut() else {
+            let huge_size = entry_range.and_then(|size| {
+                if size.as_usize() <= end.as_usize() - current_addr.as_usize() && table_level != 1 {
+                    Some(size)
+                } else {
+                    None
+                }
+            });
+
+            let Some((table, table_phys_addr)) = table_stack.last_mut() else {
                 break;
             };
 
@@ -255,38 +320,59 @@ impl MemoryMapper {
                 table_stack.pop();
                 *entry_index = 0;
                 last_entry_index = -1;
+
+                if let Some(prev) = table_index
+                    .checked_sub(2)
+                    .and_then(|prev_index| start_indices.get_mut(prev_index))
+                {
+                    *prev += 1;
+                }
                 continue;
             };
 
             let entry = *entry_ref;
 
-            if !entry.flags().custom::<BORROW_BIT>() {
+            if !entry.flags().present() && fail_on_missing {
+                return Err(ModifyMapError::NotMapped.into());
+            }
+
+            if !entry.flags().custom::<BORROW_BIT>() || !entry.flags().present() {
                 let ctx = NavigateCtx {
+                    addr: current_addr,
                     entry,
                     depth: table_index as u8 - 1,
                     entry_index: *entry_index,
                     is_last_present_entry: last_entry_index as u16 == *entry_index,
+                    points_to_backing: huge_size.is_some() || table_index == 4,
+                    size: 4096 * 512usize.pow(4u32.saturating_sub(table_index as u32)),
                 };
 
-                if let Some(new_entry) = apply(ctx) {
+                if let Some(new_entry) = apply(ctx, huge_size)? {
                     *entry_ref = new_entry;
-                    // todo: invalidate the current table
+
+                    // the entry has been modified in such a way that the tlb needs to be
+                    // invalidated
+                    if entry.addr() != new_entry.addr()
+                        || !entry.flags().native_flags_eq(new_entry.flags())
+                    {
+                        cr3::flush_page(*table_phys_addr);
+                    }
                 }
             } else if fail_on_unowned {
-                return Err(ModifyMapError::NotOwned);
+                return Err(ModifyMapError::NotOwned.into());
             }
-
-            *entry_index = entry_index.wrapping_add(1);
 
             let entry = *entry_ref;
             if entry.flags().present() && table_stack.len() <= max_depth && !entry.flags().huge() {
                 let table = self.deref_page_table_mut(entry.addr());
-                table_stack.push(table);
+                table_stack.push((table, entry.addr()));
                 last_entry_index = -1;
+            } else {
+                *entry_index += 1;
             }
         }
 
-        Ok(())
+        Ok(start_addr)
     }
 
     unsafe fn deref_l4_table(&self) -> &'static PageTable {
@@ -319,7 +405,12 @@ impl MemoryMapper {
             .set_no_exec(!props.executable())
     }
 
-    pub fn tree_display(&self, max_depth: Option<usize>) -> impl Display + '_ {
-        MemoryMapTreeDisplay::new(self, max_depth.unwrap_or(4) as u8)
+    pub fn tree_display(
+        &self,
+        start: VirtualAddress,
+        size: usize,
+        max_depth: Option<usize>,
+    ) -> impl Display + '_ {
+        MemoryMapTreeDisplay::new(self, max_depth.unwrap_or(3) as u8, start, size)
     }
 }

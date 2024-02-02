@@ -1,4 +1,8 @@
-#[derive(Clone, Copy, Default, Eq, PartialEq, Debug)]
+use core::fmt::Debug;
+
+use crate::util::FixedVec;
+
+#[derive(Clone, Copy, Default, Eq, PartialEq)]
 pub struct PageTableEntryFlags {
     value: u64,
 }
@@ -97,6 +101,13 @@ impl PageTableEntryFlags {
     pub const fn as_u64(&self) -> u64 {
         self.value
     }
+
+    pub const fn native_flags_eq(&self, rhs: Self) -> bool {
+        const NATIVE_FLAGS_MASK: u64 =
+            (1 << 8) | (1 << 7) | (1 << 2) | (1 << 1) | (1 << 0) | (1 << 6) | (1 << 63);
+
+        self.value & NATIVE_FLAGS_MASK == rhs.value & NATIVE_FLAGS_MASK
+    }
 }
 
 impl core::ops::BitOr for PageTableEntryFlags {
@@ -116,6 +127,56 @@ impl core::ops::BitAnd for PageTableEntryFlags {
         Self {
             value: self.value & rhs.value,
         }
+    }
+}
+
+impl Debug for PageTableEntryFlags {
+    fn fmt(&self, f: &mut core::fmt::Formatter<'_>) -> core::fmt::Result {
+        let mut flags = FixedVec::<9, &'static str>::new();
+
+        if self.present() {
+            flags.push("PRESENT");
+        }
+
+        if self.writable() {
+            flags.push("WRITABLE");
+        }
+
+        if self.huge() {
+            flags.push("HUGE");
+        }
+
+        if self.dirty() {
+            flags.push("DIRTY");
+        }
+
+        if self.global() {
+            flags.push("GLOBAL");
+        }
+
+        if self.noexec() {
+            flags.push("NOEXEC");
+        }
+
+        if self.user_accessible() {
+            flags.push("USER");
+        }
+
+        if self.custom::<0>() {
+            flags.push("BORROWED");
+        }
+
+        for (i, flag) in flags.iter().enumerate() {
+            let is_last = i == flags.len() - 1;
+
+            write!(f, "{flag}")?;
+
+            if !is_last {
+                write!(f, " | ")?;
+            }
+        }
+
+        Ok(())
     }
 }
 

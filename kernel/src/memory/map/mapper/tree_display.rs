@@ -7,14 +7,23 @@ use super::{MemoryMapper, NavigateCtx};
 pub struct MemoryMapTreeDisplay<'a> {
     memory_mapper: &'a MemoryMapper,
     max_depth: u8,
+    start: VirtualAddress,
+    size: usize,
 }
 
 impl<'a> MemoryMapTreeDisplay<'a> {
-    pub fn new(memory_mapper: &'a MemoryMapper, max_depth: u8) -> Self {
+    pub fn new(
+        memory_mapper: &'a MemoryMapper,
+        max_depth: u8,
+        start: VirtualAddress,
+        size: usize,
+    ) -> Self {
         assert!(max_depth <= 3);
         Self {
             memory_mapper,
             max_depth,
+            start,
+            size,
         }
     }
 
@@ -111,15 +120,22 @@ impl<'a> Display for MemoryMapTreeDisplay<'a> {
                 ctx.is_last_present_entry,
             )?;
 
-            writeln!(f, "{entry_index}: [{entry:?}]")?;
+            let backing_indicator = if ctx.points_to_backing { "*" } else { "" };
+            let size = ctx.size;
+
+            writeln!(
+                f,
+                "{entry_index}: {:?}({size:#0}){backing_indicator}  [{entry:?}]",
+                ctx.addr
+            )?;
             skips = 0;
 
             Ok(())
         };
 
         self.memory_mapper.navigate(
-            VirtualAddress::null(),
-            usize::MAX,
+            self.start,
+            self.size,
             Some(self.max_depth as usize),
             print_entry,
         )

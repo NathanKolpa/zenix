@@ -1,3 +1,5 @@
+use core::ptr::addr_of_mut;
+
 pub use gdt::*;
 pub use segment::*;
 pub use selector::*;
@@ -20,16 +22,17 @@ fn init_tss() -> TaskStateSegment {
     static mut DOUBLE_FAULT_STACK: [u8; 4096 * 16] = [0; 4096 * 16];
 
     tss.interrupt_stack_table[DOUBLE_FAULT_IST_INDEX] =
-        TssStackPointer::from_slice(unsafe { &mut DOUBLE_FAULT_STACK });
+        TssStackPointer::from_slice(unsafe { &mut *addr_of_mut!(DOUBLE_FAULT_STACK) });
 
     static mut PAGE_FAULT_STACK: [u8; 4096 * 16] = [0; 4096 * 16];
 
     tss.interrupt_stack_table[PAGE_FAULT_IST_INDEX] =
-        TssStackPointer::from_slice(unsafe { &mut PAGE_FAULT_STACK });
+        TssStackPointer::from_slice(unsafe { &mut *addr_of_mut!(PAGE_FAULT_STACK) });
 
     static mut PRIVILEGED_STACK: [u8; 4096 * 16] = [0; 4096 * 16]; // TODO: dynamically allocate this.
 
-    tss.privilege_stack_table[0] = TssStackPointer::from_slice(unsafe { &mut PRIVILEGED_STACK });
+    tss.privilege_stack_table[0] =
+        TssStackPointer::from_slice(unsafe { &mut *addr_of_mut!(PRIVILEGED_STACK) });
 
     tss
 }

@@ -155,15 +155,19 @@ impl MemoryMapper {
         Ok((start, total_size))
     }
 
-    pub unsafe fn unmap(&mut self, size: usize) -> Result<(), ModifyMapError> {
+    pub unsafe fn unmap(
+        &mut self,
+        _address: VirtualAddress,
+        _size: usize,
+    ) -> Result<(), ModifyMapError> {
         todo!()
     }
 
     /// Calculate the effective [`MemoryProperties`] on a given range of memory.
     pub fn effective_properties(
         &self,
-        address: VirtualAddress,
-        size: usize,
+        _address: VirtualAddress,
+        _size: usize,
     ) -> Result<MemoryProperties, ReadMapError> {
         todo!()
     }

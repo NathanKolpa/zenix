@@ -1,16 +1,18 @@
-use core::alloc::{GlobalAlloc, Layout};
 use core::fmt::{Debug, Formatter};
 use core::mem::{align_of, size_of, MaybeUninit};
+use core::{
+    alloc::{GlobalAlloc, Layout},
+    ptr::addr_of_mut,
+};
 
-use crate::util::address::VirtualAddress;
 use crate::util::spin::SpinLock;
+use crate::util::{address::VirtualAddress, StaticPtr};
 
 pub const INITIAL_HEAP_SIZE: usize = 1024 * 1024;
-static mut BACKING: [MaybeUninit<u64>; INITIAL_HEAP_SIZE / 8] =
-    [MaybeUninit::uninit(); INITIAL_HEAP_SIZE / 8]; // we must align the backing with the FreeNode hence, MaybeUninit<u64>
-
-static BACKING_REF: SpinLock<Option<&'static mut [MaybeUninit<u64>]>> =
-    SpinLock::new(Some(unsafe { &mut BACKING }));
+const HEAP_ARRAY_SIZE: usize = INITIAL_HEAP_SIZE / 8;
+static mut BACKING: [MaybeUninit<u64>; HEAP_ARRAY_SIZE] = [MaybeUninit::uninit(); HEAP_ARRAY_SIZE]; // we must align the backing with the FreeNode hence, MaybeUninit<u64>
+static BACKING_REF: StaticPtr<[MaybeUninit<u64>; HEAP_ARRAY_SIZE]> =
+    unsafe { StaticPtr::new(addr_of_mut!(BACKING)) };
 
 #[global_allocator]
 pub static KERNEL_ALLOC: KernelAlloc = KernelAlloc::new();
@@ -19,9 +21,7 @@ pub static KERNEL_ALLOC: KernelAlloc = KernelAlloc::new();
 ///
 /// Calling this function more than once will not do anything.
 pub fn init_heap() -> usize {
-    let mut backing_ref = BACKING_REF.lock();
-
-    if let Some(backing_ref) = backing_ref.take() {
+    if let Some(backing_ref) = BACKING_REF.take() {
         KERNEL_ALLOC.add_backing(backing_ref);
         INITIAL_HEAP_SIZE
     } else {

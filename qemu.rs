@@ -1,5 +1,3 @@
-// src/main.rs
-
 fn main() {
     // read env variables that were set in build script
     let uefi_path = env!("UEFI_PATH");

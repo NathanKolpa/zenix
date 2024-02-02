@@ -19,10 +19,16 @@ pub mod memory;
 pub mod testing;
 pub mod util;
 
-use bootloader::{entry_point, BootInfo};
+use bootloader_api::{config::Mapping, entry_point, BootInfo, BootloaderConfig};
 use core::panic::PanicInfo;
 
-entry_point!(_start);
+pub static BOOTLOADER_CONFIG: BootloaderConfig = {
+    let mut config = BootloaderConfig::new_default();
+    config.mappings.physical_memory = Some(Mapping::Dynamic);
+    config
+};
+
+entry_point!(_start, config = &BOOTLOADER_CONFIG);
 
 /// The kernel panic handler.
 #[cfg(not(test))]
@@ -40,7 +46,7 @@ fn panic(info: &PanicInfo) -> ! {
 }
 
 /// The kernel entry point.
-fn _start(boot_info: &'static BootInfo) -> ! {
+fn _start(boot_info: &'static mut BootInfo) -> ! {
     unsafe {
         init::init(boot_info);
     }

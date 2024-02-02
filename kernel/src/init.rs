@@ -1,12 +1,15 @@
 use core::usize;
 
-use bootloader::BootInfo;
+use bootloader_api::BootInfo;
 
-use crate::memory::{
-    alloc::{kernel_alloc, MemoryInfo, FRAME_ALLOC},
-    map::mapper::MemoryMapper,
-};
 use crate::{arch, debug};
+use crate::{
+    memory::{
+        alloc::{kernel_alloc, MemoryInfo, FRAME_ALLOC},
+        map::mapper::{MemoryMapper, MemoryProperties},
+    },
+    util::address::VirtualAddress,
+};
 
 /// Initialize and start the operating system.
 ///
@@ -20,7 +23,13 @@ pub unsafe fn init(boot_info: &'static BootInfo) {
     debug_println!("Staring the Zenix operating system...");
     debug_println!("Architecture: {}", arch::NAME);
     debug_println!("Debug channel: {}", debug::DEBUG_CHANNEL);
-    debug_println!("{}", MemoryInfo::from_memory_map(&boot_info.memory_map));
+    debug_println!("{}", MemoryInfo::from_memory_map(&boot_info.memory_regions));
+
+    let phys_mem_offset = boot_info
+        .physical_memory_offset
+        .into_option()
+        .expect("physical memory offset is passed by the bootloader")
+        as usize;
 
     // Initializing the heap is also very important to do first.
     // Even the frame allocator uses the heap!
@@ -30,12 +39,9 @@ pub unsafe fn init(boot_info: &'static BootInfo) {
         &crate::util::display::ReadableSize::new(kernel_size)
     );
 
-    FRAME_ALLOC.init_with(
-        &boot_info.memory_map,
-        boot_info.physical_memory_offset as usize,
-    );
+    FRAME_ALLOC.init_with(&boot_info.memory_regions, phys_mem_offset);
 
-    let mut root_mapper = MemoryMapper::from_active_page(boot_info.physical_memory_offset as usize);
+    let mut root_mapper = MemoryMapper::from_active_page(phys_mem_offset);
     root_mapper.share_all();
 
     debug_println!("{}", root_mapper.tree_display(Some(0)));

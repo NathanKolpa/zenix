@@ -1,3 +1,24 @@
+[package]
+name = "zenix"
+version = "0.1.0"
+
+[profile.release]
+strip = true
+lto = true
+codegen-units = 1
+
+[[bin]]
+name = "zenix"
+path = "qemu.rs"
+
+[build-dependencies]
+# TODO: we should write our own bootloader in the future
+bootloader = "0.11"
+kernel = { path = "kernel", artifact = "bin", target = "x86_64-unknown-none" }
+
+[dependencies]
+ovmf-prebuilt = "0.1.0-alpha.1"
+
 [workspace]
 resolver = "2"
 

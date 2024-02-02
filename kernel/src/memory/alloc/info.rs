@@ -1,52 +1,37 @@
 use crate::util::display::ReadableSize;
-use bootloader::bootinfo::{MemoryMap, MemoryRegionType};
+use bootloader_api::info::{MemoryRegionKind, MemoryRegions};
 use core::fmt::{Display, Formatter};
 
 pub struct MemoryInfo {
     pub usable: usize,
     pub total_size: usize,
-    pub kernel: usize,
-    pub kernel_stack: usize,
-    pub kernel_heap: usize,
+    pub bootloader: usize,
 }
 
 impl MemoryInfo {
-    pub fn from_memory_map(memory_map: &MemoryMap) -> Self {
+    pub fn from_memory_map(memory_map: &MemoryRegions) -> Self {
         let mut total_allocatable_bytes = 0;
         let mut total_bytes = 0;
-        let mut kernel = 0;
-        let mut kernel_stack = 0;
-        let kernel_heap = crate::memory::alloc::kernel_alloc::INITIAL_HEAP_SIZE;
+        let mut bootloader = 0;
 
-        let regions = memory_map.iter().map(|x| {
-            (
-                x.region_type,
-                (x.range.end_frame_number as usize * 4096
-                    - x.range.start_frame_number as usize * 4096),
-            )
-        });
+        let regions = memory_map
+            .iter()
+            .map(|x| (x.kind, (x.end as usize - x.start as usize)));
 
         for (kind, region_size) in regions {
             match &kind {
-                MemoryRegionType::Usable => total_allocatable_bytes += region_size,
-                MemoryRegionType::Kernel => kernel += region_size,
-                MemoryRegionType::KernelStack => kernel_stack += region_size,
+                MemoryRegionKind::Usable => total_allocatable_bytes += region_size,
+                MemoryRegionKind::Bootloader => bootloader += region_size,
                 _ => {}
             }
 
-            if kind != MemoryRegionType::Reserved {
-                total_bytes += region_size;
-            }
+            total_bytes += region_size;
         }
-
-        kernel -= crate::memory::alloc::kernel_alloc::INITIAL_HEAP_SIZE;
 
         MemoryInfo {
             usable: total_allocatable_bytes,
             total_size: total_bytes,
-            kernel,
-            kernel_stack,
-            kernel_heap,
+            bootloader,
         }
     }
 }
@@ -56,9 +41,7 @@ impl Display for MemoryInfo {
     fn fmt(&self, f: &mut Formatter<'_>) -> core::fmt::Result {
         writeln!(f, "Memory info:")?;
         writeln!(f, "\ttotal:        {}", ReadableSize::new(self.total_size))?;
-        writeln!(f, "\tkernel code:  {}", ReadableSize::new(self.kernel))?;
-        writeln!(f, "\tkernel stack: {}", ReadableSize::new(self.kernel_stack))?;
-        writeln!(f, "\tkernel heap:  {}", ReadableSize::new(self.kernel_heap))?;
+        writeln!(f, "\tbootloader:   {}", ReadableSize::new(self.bootloader))?;
         writeln!(f, "\tusable:       {}", ReadableSize::new(self.usable))?;
         Ok(())
     }

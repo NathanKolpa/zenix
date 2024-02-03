@@ -1,0 +1,5 @@
+[package]
+name = "pre-kernel"
+edition = "2021"
+version.workspace = true
+

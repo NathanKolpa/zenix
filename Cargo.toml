@@ -1,27 +1,28 @@
+cargo-features = ["profile-rustflags"]
+
 [package]
 name = "zenix"
-version = "0.1.0"
+version.workspace = true
+build = "meta/multiboot_build.rs"
 
-[profile.release]
-strip = true
-lto = true
-codegen-units = 1
+[workspace.package]
+version = "0.1.0"
 
 [[bin]]
 name = "zenix"
-path = "qemu.rs"
+path = "meta/qemu.rs"
 
 [build-dependencies]
-# TODO: we should write our own bootloader in the future
-bootloader = "0.11"
 kernel = { path = "kernel", artifact = "bin", target = "x86_64-unknown-none" }
-
-[dependencies]
-ovmf-prebuilt = "0.1.0-alpha.1"
 
 [workspace]
 resolver = "2"
-
 members = [
-	"kernel"
+	"pre-kernel",
+	"kernel",
 ]
+
+[profile.pre-kernel-debug]
+inherits = "release"
+debug = true
+split-debuginfo = "packed"

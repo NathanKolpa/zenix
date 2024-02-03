@@ -1,8 +1,14 @@
 use core::arch::asm;
 
 pub fn set_fail_msg(message: &str) {
-    let cursor = msg("Pre kernel panic: ", 0, VGA_WHITE, VGA_RED);
-    msg(message, cursor, VGA_WHITE, VGA_RED);
+    let mut cursor = msg("Pre kernel panic: ", 0, VGA_WHITE, VGA_RED);
+    cursor = msg(message, cursor, VGA_WHITE, VGA_RED);
+    msg(
+        "Halting boot procedure...",
+        cursor + (VGA_WIDTH - cursor % VGA_WIDTH),
+        VGA_WHITE,
+        VGA_RED,
+    );
 }
 
 pub fn set_running_msg() {

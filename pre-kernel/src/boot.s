@@ -20,6 +20,7 @@ header_end:
 	STACK_BOTTOM:
 	.skip STACK_SIZE
 	STACK_TOP:
+	.skip 4
 
 .code32
 .section .text

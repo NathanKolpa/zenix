@@ -23,6 +23,7 @@ struct MultibootInfo {
 }
 #[no_mangle]
 pub extern "fastcall" fn main(multiboot_magic_arg: u32, multiboot_info_addr: u32) {
+pub extern "C" fn main(multiboot_magic_arg: u32, multiboot_info_addr: u32) -> ! {
     vga::clear_screen();
     vga::set_running_msg();
 

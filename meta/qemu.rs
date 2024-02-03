@@ -38,6 +38,8 @@ fn main() {
                 debug_cmd.arg("-ex");
                 debug_cmd.arg("set confirm off");
                 debug_cmd.arg("-ex");
+                debug_cmd.arg("set disassembly-flavor intel");
+                debug_cmd.arg("-ex");
                 debug_cmd.arg("target remote localhost:1234");
                 debug_cmd.arg("-ex");
                 debug_cmd.arg(format!("add-symbol-file {pre_kernel_path}"));

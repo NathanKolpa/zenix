@@ -4,6 +4,8 @@ pub use page::*;
 pub use page_table::*;
 pub use size::*;
 
+#[cfg(any(target_arch = "x86_64", target_arch = "x86"))]
+#[doc(cfg(any(target_arch = "x86_64", target_arch = "x86")))]
 pub mod cr3;
 mod entry;
 mod flags;

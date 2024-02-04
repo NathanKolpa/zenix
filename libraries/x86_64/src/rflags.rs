@@ -15,6 +15,8 @@ impl RFlags {
 
     const INTERRUPTS_ENABLED_BIT: u64 = 1 << 9;
 
+    #[cfg(any(target_arch = "x86_64", target_arch = "x86"))]
+    #[doc(cfg(any(target_arch = "x86_64", target_arch = "x86")))]
     pub fn read() -> Self {
         let value: u64;
 

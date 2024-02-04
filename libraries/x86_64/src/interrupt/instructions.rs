@@ -17,7 +17,6 @@ pub fn disable_interrupts() {
 
 /// Run a block of code (aka the `callback` argument) that is guaranteed to be executed without interrupts.
 /// After completing the function, the interrupt status flag is restored to its original state.
-#[inline]
 pub fn without_interrupts<F: FnOnce() -> R, R>(callback: F) -> R {
     let ints_enabled = RFlags::read().interrupts_enabled();
 

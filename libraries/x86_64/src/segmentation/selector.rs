@@ -37,12 +37,16 @@ impl SegmentSelector {
         PrivilegeLevel::from(bits as u8)
     }
 
+    #[cfg(any(target_arch = "x86_64", target_arch = "x86"))]
+    #[doc(cfg(any(target_arch = "x86_64", target_arch = "x86")))]
     pub unsafe fn load_into_tss(&self) {
         unsafe {
             asm!("ltr {0:x}", in(reg) self.value, options(nostack, preserves_flags));
         }
     }
 
+    #[cfg(any(target_arch = "x86_64", target_arch = "x86"))]
+    #[doc(cfg(any(target_arch = "x86_64", target_arch = "x86")))]
     pub unsafe fn load_into_cs(&self) {
         let value = self.value;
         asm!(
@@ -57,11 +61,15 @@ impl SegmentSelector {
         );
     }
 
+    #[cfg(any(target_arch = "x86_64", target_arch = "x86"))]
+    #[doc(cfg(any(target_arch = "x86_64", target_arch = "x86")))]
     pub unsafe fn load_into_ds(&self) {
         let _value = self.value;
         asm!("mov ds, {0:x}", in(reg) self.value, options(nostack, preserves_flags));
     }
 
+    #[cfg(any(target_arch = "x86_64", target_arch = "x86"))]
+    #[doc(cfg(any(target_arch = "x86_64", target_arch = "x86")))]
     pub unsafe fn load_into_ss(&self) {
         let _value = self.value;
         asm!("mov ss, {0:x}", in(reg) self.value, options(nostack, preserves_flags));

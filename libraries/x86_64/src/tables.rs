@@ -13,12 +13,14 @@ impl DescriptorTablePointer {
         Self { limit, base }
     }
 
-    #[inline]
+    #[cfg(any(target_arch = "x86_64", target_arch = "x86"))]
+    #[doc(cfg(any(target_arch = "x86_64", target_arch = "x86")))]
     pub unsafe fn load_interrupt_table(&self) {
         core::arch::asm!("lidt [{}]", in(reg) self, options(readonly, nostack, preserves_flags));
     }
 
-    #[inline]
+    #[cfg(any(target_arch = "x86_64", target_arch = "x86"))]
+    #[doc(cfg(any(target_arch = "x86_64", target_arch = "x86")))]
     pub unsafe fn load_descriptor_table(&self) {
         core::arch::asm!("lgdt [{}]", in(reg) self, options(readonly, nostack, preserves_flags));
     }

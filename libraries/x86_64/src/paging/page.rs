@@ -1,7 +1,7 @@
 use core::fmt::Debug;
 
-use crate::arch::x86_64::paging::PageSize;
-use crate::util::address::*;
+use crate::paging::PageSize;
+use essentials::address::*;
 
 #[derive(Clone, Copy, Debug)]
 pub struct Page {

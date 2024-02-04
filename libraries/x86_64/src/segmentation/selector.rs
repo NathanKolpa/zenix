@@ -1,7 +1,7 @@
 use core::arch::asm;
 use core::fmt::{Debug, Formatter};
 
-use crate::arch::x86_64::PrivilegeLevel;
+use crate::PrivilegeLevel;
 
 /// From the [osdev wiki](https://wiki.osdev.org/Segment_Selector):
 /// > A Segment Selector is a 16-bit binary data structure specific to the IA-32 and x86-64 architectures.

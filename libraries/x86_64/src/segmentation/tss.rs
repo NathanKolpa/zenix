@@ -1,5 +1,5 @@
-use crate::util::address::VirtualAddress;
 use core::mem::size_of;
+use essentials::address::VirtualAddress;
 
 /// A pointer to a stack that can be used by the [`TaskStateSegment`].
 ///

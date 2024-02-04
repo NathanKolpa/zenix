@@ -1,5 +1,5 @@
-use crate::arch::x86_64::port::*;
-use crate::util::spin::{Singleton, SpinLock};
+use crate::port::*;
+use essentials::spin::{Singleton, SpinLock};
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 #[repr(u8)]

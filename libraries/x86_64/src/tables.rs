@@ -1,4 +1,4 @@
-use crate::util::address::VirtualAddress;
+use essentials::address::VirtualAddress;
 
 /// A descriptor table pointer, can either point to a [`super::segmentation::GlobalDescriptorTable`] or [`super::interrupt::InterruptDescriptorTable`].
 #[derive(Clone, Copy)]

@@ -1,8 +1,8 @@
-use crate::arch::x86_64::interrupt::InterruptStackFrame;
-use crate::arch::x86_64::segmentation::SegmentSelector;
-use crate::util::address::VirtualAddress;
+use crate::interrupt::InterruptStackFrame;
+use crate::segmentation::SegmentSelector;
 use core::fmt::{Debug, Formatter};
 use core::marker::PhantomData;
+use essentials::address::VirtualAddress;
 
 #[derive(Copy, Clone)]
 #[repr(C)]

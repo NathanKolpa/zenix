@@ -22,7 +22,11 @@ members = [
 	"kernel",
 
 	"libraries/essentials",
+	"libraries/x86_64",
 ]
+
+[workspace.dependencies]
+essentials = { path = "libraries/essentials" }
 
 [profile.pre-kernel-debug]
 inherits = "release"

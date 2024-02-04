@@ -24,6 +24,13 @@ name = "pre-kernel"
 version = "0.1.0"
 
 [[package]]
+name = "x86_64"
+version = "0.0.0"
+dependencies = [
+ "essentials",
+]
+
+[[package]]
 name = "zenix"
 version = "0.1.0"
 dependencies = [

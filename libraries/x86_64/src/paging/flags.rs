@@ -1,6 +1,6 @@
 use core::fmt::Debug;
 
-use crate::util::FixedVec;
+use essentials::FixedVec;
 
 #[derive(Clone, Copy, Default, Eq, PartialEq)]
 pub struct PageTableEntryFlags {

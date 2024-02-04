@@ -1,7 +1,7 @@
 use core::fmt::{Debug, Formatter};
 
-use crate::arch::x86_64::paging::PageTableEntryFlags;
-use crate::util::address::PhysicalAddress;
+use crate::paging::PageTableEntryFlags;
+use essentials::address::PhysicalAddress;
 
 #[repr(C)]
 #[derive(Clone, Copy, Default)]

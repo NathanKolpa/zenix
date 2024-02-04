@@ -1,4 +1,4 @@
-use crate::arch::x86_64::RFlags;
+use crate::RFlags;
 use core::arch::asm;
 
 /// (Atomically) enable interrupts.

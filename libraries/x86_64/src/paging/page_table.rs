@@ -1,4 +1,4 @@
-use crate::arch::x86_64::paging::{PageTableEntry, TABLE_ENTRIES};
+use crate::paging::{PageTableEntry, TABLE_ENTRIES};
 use core::ops::{Deref, DerefMut};
 
 #[repr(align(4096))]

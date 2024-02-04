@@ -1,4 +1,4 @@
-use core::arch::asm;
+use x86_64::port::Port;
 
 pub fn set_fail_msg(message: &str) {
     let mut cursor = msg("Pre kernel panic: ", 0, VGA_WHITE, VGA_RED);
@@ -25,8 +25,11 @@ pub fn clear_screen() {
 
 fn disable_cursor() {
     unsafe {
-        asm!("out dx, al", in("dx") 0x3D4, in("al") 0x0Au8, options(nomem, nostack, preserves_flags));
-        asm!("out dx, al", in("dx") 0x3D5, in("al") 0x20u8, options(nomem, nostack, preserves_flags));
+        let mut port1 = Port::write_only(0x3D4);
+        let mut port2 = Port::write_only(0x3D5);
+
+        port1.write(0x0Au8);
+        port2.write(0x20u8);
     }
 }
 

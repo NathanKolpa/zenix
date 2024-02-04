@@ -4,3 +4,6 @@ edition = "2021"
 version.workspace = true
 license.workspace = true
 
+[dependencies]
+x86_64 = { workspace = true }
+

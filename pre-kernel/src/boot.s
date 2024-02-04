@@ -27,7 +27,7 @@ header_end:
 .global _start
 .type _start, @function
 _start:
-	// From the spec [EAX]: Must contain the magic value ‘0x2BADB002’; the presence of this value indicates to the operating system that it was loaded by a Multiboot-compliant boot loader (e.g. as opposed to another type of boot loader that the operating system can also be loaded from).
+	// From the spec [EAX]: Must contain the magic value '0x2BADB002'; the presence of this value indicates to the operating system that it was loaded by a Multiboot-compliant boot loader (e.g. as opposed to another type of boot loader that the operating system can also be loaded from).
 
 	mov [STACK_TOP], eax
 	mov [STACK_TOP - 4], ebx

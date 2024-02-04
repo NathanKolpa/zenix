@@ -1,5 +1,6 @@
 //! Simple containers and primitives.
 
+#![no_std]
 #![feature(doc_cfg)]
 
 pub mod address;

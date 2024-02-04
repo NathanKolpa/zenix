@@ -1,5 +1,3 @@
-use core::arch::asm;
-
 #[repr(transparent)]
 #[derive(Debug, Copy, Clone)]
 pub struct RFlags {
@@ -15,13 +13,13 @@ impl RFlags {
 
     const INTERRUPTS_ENABLED_BIT: u64 = 1 << 9;
 
-    #[cfg(any(target_arch = "x86_64", target_arch = "x86"))]
-    #[doc(cfg(any(target_arch = "x86_64", target_arch = "x86")))]
+    #[cfg(target_arch = "x86_64")]
+    #[doc(cfg(target_arch = "x86_64"))]
     pub fn read() -> Self {
         let value: u64;
 
         unsafe {
-            asm!("pushfq; pop {}", out(reg) value, options(nomem, preserves_flags));
+            core::arch::asm!("pushfq; pop {}", out(reg) value, options(nomem, preserves_flags));
         }
 
         Self { value }

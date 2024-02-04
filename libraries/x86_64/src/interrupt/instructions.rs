@@ -2,6 +2,8 @@ use crate::RFlags;
 use core::arch::asm;
 
 /// (Atomically) enable interrupts.
+#[cfg(any(target_arch = "x86_64", target_arch = "x86"))]
+#[doc(cfg(any(target_arch = "x86_64", target_arch = "x86")))]
 pub fn enable_interrupts() {
     unsafe {
         asm!("sti", options(nomem, nostack));
@@ -9,6 +11,8 @@ pub fn enable_interrupts() {
 }
 
 /// (Atomically) disable interrupts
+#[cfg(any(target_arch = "x86_64", target_arch = "x86"))]
+#[doc(cfg(any(target_arch = "x86_64", target_arch = "x86")))]
 pub fn disable_interrupts() {
     unsafe {
         asm!("cli", options(nomem, nostack));
@@ -17,6 +21,8 @@ pub fn disable_interrupts() {
 
 /// Run a block of code (aka the `callback` argument) that is guaranteed to be executed without interrupts.
 /// After completing the function, the interrupt status flag is restored to its original state.
+#[cfg(target_arch = "x86_64")]
+#[doc(cfg(target_arch = "x86_64"))]
 pub fn without_interrupts<F: FnOnce() -> R, R>(callback: F) -> R {
     let ints_enabled = RFlags::read().interrupts_enabled();
 

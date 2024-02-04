@@ -55,7 +55,7 @@ impl SegmentSelector {
         "push {tmp}",
         "retfq",
         "1:",
-        value = in(reg) u64::from(value),
+        value = in(reg) usize::from(value),
         tmp = lateout(reg) _,
         options(preserves_flags),
         );

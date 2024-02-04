@@ -74,8 +74,6 @@ impl<L> Address<L> {
         addr & !(align - 1)
     }
 
-    #[cfg(target_arch = "x86_64")]
-    #[doc(cfg(target_arch = "x86_64"))]
     pub const fn as_u64(&self) -> u64 {
         self.addr as u64
     }

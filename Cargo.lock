@@ -3,6 +3,13 @@
 version = 3
 
 [[package]]
+name = "bootinfo"
+version = "0.1.0"
+dependencies = [
+ "essentials",
+]
+
+[[package]]
 name = "bootloader_api"
 version = "0.11.6"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -25,6 +32,8 @@ dependencies = [
 name = "pre-kernel"
 version = "0.1.0"
 dependencies = [
+ "bootinfo",
+ "essentials",
  "x86_64",
 ]
 

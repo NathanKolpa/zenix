@@ -1,10 +1,8 @@
 [package]
-name = "pre-kernel"
+name = "bootinfo"
 edition = "2021"
 version.workspace = true
 license.workspace = true
 
 [dependencies]
-x86_64 = { workspace = true }
-bootinfo = { workspace = true }
 essentials = { workspace = true }

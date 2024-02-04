@@ -1,6 +1,6 @@
 //! Abstractions around pointers.
 
-use core::ops::Sub;
+use core::ops::{AddAssign, Sub};
 use core::{
     fmt::{Debug, Display, Formatter},
     marker::PhantomData,
@@ -52,6 +52,10 @@ impl<L> Address<L> {
         }
     }
 
+    pub const fn is_within(&self, region_addr: Address<L>, region_len: usize) -> bool {
+        self.addr >= region_addr.addr && self.addr <= region_addr.addr + region_len
+    }
+
     /// Aligns a memory address upwards to the specified alignment.
     ///
     /// # Parameters
@@ -94,7 +98,6 @@ impl<L> Address<L> {
 /// A wrapper for physical addresses.
 impl Address<PhysicalAddressMarker> {
     pub fn align_down(&self, align: usize) -> Self {
-        assert!(align.is_power_of_two(), "`align` must be a power of two");
         Self::new(Self::align_ptr_down(self.addr, align))
     }
 }
@@ -102,12 +105,9 @@ impl Address<PhysicalAddressMarker> {
 /// A wrapper for virtual addresses, or normal pointers.
 impl Address<VirtualAddressMarker> {
     pub const fn align_down(&self, align: usize) -> Self {
-        assert!(align.is_power_of_two(), "`align` must be a power of two");
-
         let mut addr = self.addr;
         addr = Self::align_ptr_down(addr, align);
         addr = ((addr << 16) as isize >> 16) as usize;
-
         Self::new(addr)
     }
 
@@ -160,11 +160,11 @@ impl Address<VirtualAddressMarker> {
         self.addr & 0o_777_7777
     }
 
-    pub fn as_ptr<T>(&self) -> *const T {
+    pub const fn as_ptr<T>(&self) -> *const T {
         self.as_u64() as *const T
     }
 
-    pub fn as_mut_ptr<T>(&self) -> *mut T {
+    pub const fn as_mut_ptr<T>(&self) -> *mut T {
         self.as_u64() as *mut T
     }
 
@@ -191,6 +191,12 @@ impl<T> Add<usize> for Address<T> {
 
     fn add(self, rhs: usize) -> Self::Output {
         Self::new(self.addr + rhs)
+    }
+}
+
+impl<T> AddAssign<usize> for Address<T> {
+    fn add_assign(&mut self, rhs: usize) {
+        self.addr += rhs;
     }
 }
 

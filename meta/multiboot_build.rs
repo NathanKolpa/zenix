@@ -37,6 +37,9 @@ fn build_pre_kernel(out_dir: &Path) -> PathBuf {
     if profile == "debug" {
         cmd.arg("--profile");
         cmd.arg("pre-kernel-debug");
+    } else {
+        cmd.arg("--profile");
+        cmd.arg("pre-kernel-release");
     }
 
     let status = cmd

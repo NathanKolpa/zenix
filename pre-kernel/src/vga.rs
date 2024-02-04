@@ -1,3 +1,6 @@
+use core::mem::size_of;
+
+use essentials::address::VirtualAddress;
 use x86_64::port::Port;
 
 pub fn set_fail_msg(message: &str) {
@@ -46,12 +49,15 @@ const VGA_HEIGHT: usize = 25;
 const VGA_WIDTH: usize = 80;
 const VGA_SIZE: usize = VGA_WIDTH * VGA_HEIGHT;
 
+pub const VGA_ADDR: VirtualAddress = VirtualAddress::new(0xB8000);
+pub const VGA_LEN: usize = VGA_SIZE * size_of::<u16>();
+
 const VGA_WHITE: u8 = 15;
 const VGA_BLACK: u8 = 0;
 const VGA_RED: u8 = 4;
 
 fn write_cell(pos: usize, char: u8, fg: u8, bg: u8) {
-    const SCREEN_PTR: *mut u16 = 0xB8000 as *mut u16;
+    const SCREEN_PTR: *mut u16 = VGA_ADDR.as_mut_ptr();
 
     if pos > VGA_SIZE {
         return;

@@ -45,8 +45,8 @@ impl SegmentSelector {
         }
     }
 
-    #[cfg(any(target_arch = "x86_64", target_arch = "x86"))]
-    #[doc(cfg(any(target_arch = "x86_64", target_arch = "x86")))]
+    #[cfg(target_arch = "x86_64")]
+    #[doc(cfg(target_arch = "x86_64"))]
     pub unsafe fn load_into_cs(&self) {
         let value = self.value;
         asm!(

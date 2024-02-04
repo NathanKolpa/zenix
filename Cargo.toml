@@ -25,13 +25,26 @@ members = [
 
 	"libraries/essentials",
 	"libraries/x86_64",
+	"libraries/bootinfo",
 ]
 
 [workspace.dependencies]
 essentials = { path = "libraries/essentials" }
 x86_64 = { path = "libraries/x86_64" }
+bootinfo = { path = "libraries/bootinfo" }
+
+
+[profile.pre-kernel-release]
+inherits = "release"
+strip = true
+opt-level = "z"
+lto = true
+codegen-units = 1
+panic = "abort"
 
 [profile.pre-kernel-debug]
 inherits = "release"
 debug = true
+strip = "none"
 split-debuginfo = "packed"
+opt-level = 1

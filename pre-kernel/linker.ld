@@ -19,6 +19,12 @@ SECTIONS {
 		*(.rodata .rodata.*)
 		*(.comment .comment.*)
 	}
+	.eh_frame : {
+		*(.eh_frame .eh_frame.*)
+	}
+	.eh_frame_hdr : {
+		*(.eh_frame_hdr .eh_frame_hdr.*)
+	}
 	.debug : {
 		*(.debug_loc .debug_loc.*)
 		*(.debug_abbrev .debug_abbrev.*)
@@ -30,4 +36,6 @@ SECTIONS {
 		*(.debug_line .debug_line.*)
 		*(.debug_line .debug_line.*)
 	}
+
+	BUMP_MEMORY_START = .;
 }

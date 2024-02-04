@@ -1,3 +1,5 @@
 [package]
 name = "essentials"
 edition = "2021"
+version.workspace = true
+license.workspace = true

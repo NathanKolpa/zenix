@@ -2,11 +2,13 @@ cargo-features = ["profile-rustflags"]
 
 [package]
 name = "zenix"
-version.workspace = true
 build = "meta/multiboot_build.rs"
+version.workspace = true
+license.workspace = true
 
 [workspace.package]
 version = "0.1.0"
+license = "GLPv2"
 
 [[bin]]
 name = "zenix"

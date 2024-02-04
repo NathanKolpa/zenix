@@ -1,6 +1,8 @@
 [package]
 name = "kernel"
 edition = "2021"
+version.workspace = true
+license.workspace = true
 
 [dependencies]
 bootloader_api = "0.11"

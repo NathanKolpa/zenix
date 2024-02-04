@@ -1,6 +1,10 @@
 [package]
 name = "x86_64"
 edition = "2021"
+version.workspace = true
+license.workspace = true
+
+
 
 [dependencies]
 essentials = { workspace = true }

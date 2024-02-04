@@ -10,11 +10,11 @@ checksum = "1f11d1b6f220515550211f3c3b70b2ac027e56f2bee96d341494a76f162d4209"
 
 [[package]]
 name = "essentials"
-version = "0.0.0"
+version = "0.1.0"
 
 [[package]]
 name = "kernel"
-version = "0.0.0"
+version = "0.1.0"
 dependencies = [
  "bootloader_api",
  "essentials",
@@ -27,7 +27,7 @@ version = "0.1.0"
 
 [[package]]
 name = "x86_64"
-version = "0.0.0"
+version = "0.1.0"
 dependencies = [
  "essentials",
 ]

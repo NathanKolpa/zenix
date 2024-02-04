@@ -44,7 +44,7 @@ fn main() {
                 debug_cmd.arg("-ex");
                 debug_cmd.arg(format!("add-symbol-file {pre_kernel_path}"));
                 debug_cmd.arg("-ex");
-                debug_cmd.arg("break *0x550");
+                debug_cmd.arg("break _start");
                 debug_cmd.arg("-ex");
                 debug_cmd.arg("c");
                 debug_cmd.arg("-ex");

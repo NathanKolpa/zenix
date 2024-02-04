@@ -1,12 +1,11 @@
 ENTRY(_start)
 
 SECTIONS {
-	. = 0x500;
+	. = 1M;
 
 	.multiboot_header : {
 		*(.multiboot_header)
 	}
-	. = 0x550;
 	.start : {
 		*(.start)
 	}

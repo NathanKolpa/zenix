@@ -1,5 +1,4 @@
 use crate::port::*;
-use essentials::spin::{Singleton, SpinLock};
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 #[repr(u8)]
@@ -98,6 +97,3 @@ impl Uart16550 {
         }
     }
 }
-
-pub static UART_16550_CHANNEL: Singleton<SpinLock<Uart16550>> =
-    Singleton::new(|| SpinLock::new(unsafe { Uart16550::new_and_init(0x3F8) }));

@@ -1,5 +1,4 @@
 use crate::port::*;
-use essentials::spin::SpinLock;
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 #[repr(u8)]
@@ -26,5 +25,3 @@ impl Qemu {
         panic!("Processor still running after requesting QEMU exit. Are you rinning in a qemu emulator? Or have you forgot to  include the '-device isa-debug-exit' flag?");
     }
 }
-
-pub static QEMU_DEVICE: SpinLock<Qemu> = SpinLock::new(unsafe { Qemu::new() });

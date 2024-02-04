@@ -1,6 +1,6 @@
 use core::ops::Deref;
 
-use crate::util::spin::SpinOnce;
+use crate::spin::SpinOnce;
 
 /// A lazy singleton that initializes when accessed for the first time.
 /// Concurrency-safety is guaranteed though [`SpinOnce`].

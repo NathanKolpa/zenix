@@ -1,0 +1,3 @@
+[package]
+name = "essentials"
+edition = "2021"

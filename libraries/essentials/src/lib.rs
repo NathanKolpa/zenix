@@ -1,5 +1,7 @@
 //! Simple containers and primitives.
 
+#![feature(doc_cfg)]
+
 pub mod address;
 mod bitmap;
 pub mod display;

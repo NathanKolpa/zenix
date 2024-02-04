@@ -4,8 +4,9 @@
 
 use core::fmt::Write;
 
-use crate::arch::x86_64::device::uart_16550::UART_16550_CHANNEL;
-use crate::arch::x86_64::interrupt::without_interrupts;
+use x86_64::interrupt::without_interrupts;
+
+use crate::arch::x86_64::devices::UART_16550_CHANNEL;
 
 #[macro_export]
 macro_rules! debug_print {

@@ -3,11 +3,12 @@ use core::{fmt::Display, u16};
 pub use errors::*;
 pub use props::MemoryProperties;
 
-use crate::{arch::x86_64::paging::*, memory::alloc::FRAME_ALLOC, util::FixedVec};
-use crate::{
-    memory::map::mapper::tree_display::MemoryMapTreeDisplay,
-    util::address::{PhysicalAddress, VirtualAddress},
-};
+use crate::memory::alloc::FRAME_ALLOC;
+use crate::memory::map::mapper::tree_display::MemoryMapTreeDisplay;
+
+use essentials::address::{PhysicalAddress, VirtualAddress};
+use essentials::FixedVec;
+use x86_64::paging::*;
 
 mod errors;
 mod props;

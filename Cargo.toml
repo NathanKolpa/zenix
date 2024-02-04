@@ -27,6 +27,7 @@ members = [
 
 [workspace.dependencies]
 essentials = { path = "libraries/essentials" }
+x86_64 = { path = "libraries/x86_64" }
 
 [profile.pre-kernel-debug]
 inherits = "release"

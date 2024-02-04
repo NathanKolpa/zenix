@@ -3,8 +3,8 @@ use core::cmp::max;
 use core::sync::atomic::{AtomicUsize, Ordering};
 
 use crate::memory::alloc::frame_alloc::level::Level;
-use crate::util::address::PhysicalAddress;
-use crate::util::spin::SpinLock;
+use essentials::address::PhysicalAddress;
+use essentials::spin::SpinLock;
 
 use super::MIN_ORDER;
 

@@ -1,6 +1,6 @@
 use core::fmt::{Display, Formatter};
 
-use crate::util::{address::VirtualAddress, FixedVec};
+use essentials::{address::VirtualAddress, FixedVec};
 
 use super::{MemoryMapper, NavigateCtx};
 

@@ -37,8 +37,8 @@ use zone::Zone;
 #[allow(unused_imports)] // Used the module's doc.
 use level::Level;
 
-use crate::util::address::PhysicalAddress;
-use crate::util::PanicOnce;
+use essentials::address::PhysicalAddress;
+use essentials::PanicOnce;
 
 mod level;
 mod zone;

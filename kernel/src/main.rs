@@ -17,7 +17,6 @@ pub mod init;
 pub mod memory;
 #[cfg(test)]
 pub mod testing;
-pub mod util;
 
 use bootloader_api::{config::Mapping, entry_point, BootInfo, BootloaderConfig};
 use core::panic::PanicInfo;
@@ -35,7 +34,7 @@ entry_point!(_start, config = &BOOTLOADER_CONFIG);
 #[panic_handler]
 fn panic(info: &PanicInfo) -> ! {
     debug_println!("{info}");
-    arch::x86_64::halt_loop();
+    x86_64::halt_loop();
 }
 
 /// The kernel panic handler during testing.
@@ -54,5 +53,5 @@ fn _start(boot_info: &'static mut BootInfo) -> ! {
     #[cfg(test)]
     test_main();
 
-    arch::x86_64::halt_loop();
+    x86_64::halt_loop();
 }

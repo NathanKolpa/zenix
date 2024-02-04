@@ -5,8 +5,7 @@ use core::{
     ptr::addr_of_mut,
 };
 
-use crate::util::spin::SpinLock;
-use crate::util::{address::VirtualAddress, StaticPtr};
+use essentials::{address::VirtualAddress, spin::SpinLock, StaticPtr};
 
 pub const INITIAL_HEAP_SIZE: usize = 1024 * 1024;
 const HEAP_ARRAY_SIZE: usize = INITIAL_HEAP_SIZE / 8;

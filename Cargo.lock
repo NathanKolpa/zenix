@@ -17,6 +17,8 @@ name = "kernel"
 version = "0.0.0"
 dependencies = [
  "bootloader_api",
+ "essentials",
+ "x86_64",
 ]
 
 [[package]]

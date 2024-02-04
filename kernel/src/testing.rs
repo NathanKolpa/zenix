@@ -2,8 +2,9 @@
 
 use core::panic::PanicInfo;
 
-use crate::arch::x86_64::device::qemu::{ExitCode, QEMU_DEVICE};
-use crate::{debug_print, debug_println};
+use x86_64::device::qemu::ExitCode;
+
+use crate::{arch::x86_64::devices::QEMU_DEVICE, debug_print, debug_println};
 
 pub trait TestCase {
     fn run(&self, test_number: usize, test_count: usize);

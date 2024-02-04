@@ -1,7 +1,7 @@
 use alloc::{vec, vec::Vec};
 
-use crate::util::address::{PhysicalAddress, VirtualAddress};
-use crate::util::Bitmap;
+use essentials::address::{PhysicalAddress, VirtualAddress};
+use essentials::Bitmap;
 
 struct Node {
     next: PhysicalAddress,

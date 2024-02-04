@@ -1,15 +1,13 @@
 use core::usize;
 
 use bootloader_api::BootInfo;
+use essentials::address::VirtualAddress;
 
-use crate::{arch, debug};
-use crate::{
-    memory::{
-        alloc::{kernel_alloc, MemoryInfo, FRAME_ALLOC},
-        map::mapper::{MemoryMapper, MemoryProperties},
-    },
-    util::address::VirtualAddress,
+use crate::memory::{
+    alloc::{kernel_alloc, MemoryInfo, FRAME_ALLOC},
+    map::mapper::{MemoryMapper, MemoryProperties},
 };
+use crate::{arch, debug};
 
 /// Initialize and start the operating system.
 ///
@@ -36,7 +34,7 @@ pub unsafe fn init(boot_info: &'static BootInfo) {
     let kernel_size = kernel_alloc::init_heap();
     debug_println!(
         "Initialized the kernel heap with {} of backing.",
-        &crate::util::display::ReadableSize::new(kernel_size)
+        &essentials::display::ReadableSize::new(kernel_size)
     );
 
     FRAME_ALLOC.init_with(&boot_info.memory_regions, phys_mem_offset);

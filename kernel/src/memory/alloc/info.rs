@@ -1,6 +1,7 @@
-use crate::{memory::alloc::kernel_alloc::INITIAL_HEAP_SIZE, util::display::ReadableSize};
+use crate::memory::alloc::kernel_alloc::INITIAL_HEAP_SIZE;
 use bootloader_api::{info::MemoryRegionKind, BootInfo};
 use core::fmt::{Display, Formatter};
+use essentials::display::ReadableSize;
 
 pub struct MemoryInfo {
     pub usable: usize,

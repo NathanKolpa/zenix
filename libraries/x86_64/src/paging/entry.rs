@@ -1,4 +1,7 @@
-use core::fmt::{Debug, Formatter};
+use core::{
+    fmt::{Debug, Formatter},
+    u64,
+};
 
 use crate::paging::PageTableEntryFlags;
 use essentials::address::PhysicalAddress;
@@ -26,23 +29,35 @@ impl PageTableEntry {
         self.value = self.value ^ ((self.value ^ flags.as_u64()) & Self::FLAGS_MASK);
     }
 
+    pub fn set_addr_u64(&mut self, addr: u64) {
+        self.value = self.value ^ ((self.value ^ addr) & Self::ADDR_MASK);
+    }
+
+    #[cfg(target_arch = "x86_64")]
+    #[doc(cfg(target_arch = "x86_64"))]
     pub fn set_addr(&mut self, addr: PhysicalAddress) {
-        self.value = self.value ^ ((self.value ^ addr.as_u64()) & Self::ADDR_MASK);
+        self.set_addr_u64(addr.as_u64())
     }
 
     pub const fn flags(&self) -> PageTableEntryFlags {
         PageTableEntryFlags::new(self.value & Self::FLAGS_MASK)
     }
 
+    pub const fn addr_u64(&self) -> u64 {
+        self.value & Self::ADDR_MASK
+    }
+
+    #[cfg(target_arch = "x86_64")]
+    #[doc(cfg(target_arch = "x86_64"))]
     pub const fn addr(&self) -> PhysicalAddress {
-        PhysicalAddress::new((self.value & Self::ADDR_MASK) as usize)
+        PhysicalAddress::new(self.addr_u64() as usize)
     }
 }
 
 impl Debug for PageTableEntry {
     fn fmt(&self, f: &mut Formatter<'_>) -> core::fmt::Result {
         f.debug_struct("PageTableEntry")
-            .field("addr", &self.addr())
+            .field("addr", &self.addr_u64())
             .field("flags", &self.flags())
             .finish()
     }

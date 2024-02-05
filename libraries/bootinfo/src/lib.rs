@@ -1,23 +1,21 @@
 #![no_std]
 
-use essentials::address::PhysicalAddress;
-
 #[repr(C)]
 #[derive(Clone, Copy, Debug)]
 pub struct MemoryRegion {
-    pub start: PhysicalAddress,
-    pub size: usize,
+    start: u64,
+    size: u64,
 }
 
 #[repr(C)]
 #[derive(Clone, Debug)]
-pub struct BootInfo {
-    pub physical_memory_offset: usize,
-    pub pre_kernel: MemoryRegion,
-    pub kernel_code: MemoryRegion,
-    pub kernel_stack: MemoryRegion,
-    pub usable_memory: &'static [MemoryRegion],
+pub struct BootInfo<'a> {
+    physical_memory_offset: u64,
+    pre_kernel: MemoryRegion,
+    kernel_code: MemoryRegion,
+    kernel_stack: MemoryRegion,
+    usable_memory: &'a [MemoryRegion],
 
-    pub kernel_arguments: Option<&'static str>,
-    pub bootloader_name: Option<&'static str>,
+    kernel_arguments: Option<&'a str>,
+    bootloader_name: Option<&'a str>,
 }

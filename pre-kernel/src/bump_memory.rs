@@ -1,4 +1,4 @@
-use core::mem::{align_of, transmute, MaybeUninit};
+use core::mem::{align_of, MaybeUninit};
 
 use essentials::address::VirtualAddress;
 
@@ -9,13 +9,15 @@ const UNUSABLE_REGIONS: &[(VirtualAddress, usize)] = &[(VGA_ADDR, VGA_LEN)];
 
 pub struct BumpMemory {
     start: VirtualAddress,
+    end: VirtualAddress,
     unusable_regions: &'static [(VirtualAddress, usize)],
 }
 
 impl BumpMemory {
-    pub unsafe fn new(start: VirtualAddress) -> Self {
+    pub unsafe fn new(start: VirtualAddress, end: VirtualAddress) -> Self {
         Self {
             start,
+            end,
             unusable_regions: UNUSABLE_REGIONS,
         }
     }
@@ -33,6 +35,10 @@ impl BumpMemory {
             }
 
             break;
+        }
+
+        if self.start + size >= self.end {
+            panic!("Out of bump memory");
         }
 
         let current_start = self.start;

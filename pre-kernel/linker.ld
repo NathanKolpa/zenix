@@ -2,7 +2,11 @@ ENTRY(_start)
 
 SECTIONS {
 	. = 1M;
+	BUMP_MEMORY_START = .;
 
+	. = 2M;
+	BUMP_MEMORY_END = .;
+	PRE_KERNEL_START = .;
 	.multiboot_header : {
 		*(.multiboot_header)
 	}
@@ -36,6 +40,5 @@ SECTIONS {
 		*(.debug_line .debug_line.*)
 		*(.debug_line .debug_line.*)
 	}
-
-	BUMP_MEMORY_START = .;
+	PRE_KERNEL_END = .;
 }

@@ -12,7 +12,6 @@ header_start:
 	.long  -(MULTIBOOT_HEADER_MAGIC + MULTIBOOT_HEADER_FLAGS) // checksum
 header_end:
 
-
 .section .bss
 	.set STACK_SIZE, 16384
 

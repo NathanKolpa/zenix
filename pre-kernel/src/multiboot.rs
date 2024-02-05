@@ -1,4 +1,22 @@
-use core::{marker::PhantomData, mem::size_of, u8, usize};
+use core::mem::size_of;
+
+#[repr(C)]
+pub struct MultibootModule {
+    start: u32,
+    end: u32,
+    cmdline: u32,
+    _reserved: u32,
+}
+
+impl MultibootModule {
+    pub fn addr(&self) -> u32 {
+        self.start
+    }
+
+    pub fn len(&self) -> u32 {
+        self.end - self.start
+    }
+}
 
 #[repr(C)]
 pub struct MultibootMMapEntry {
@@ -94,6 +112,16 @@ impl MultibootInfo {
         Some(MemoryMapIter {
             addr: self.mmap_addr as *const _,
             info: self,
+        })
+    }
+
+    pub fn mods(&self) -> Option<&[MultibootModule]> {
+        if self.flags & (1 << 3) == 0 {
+            return None;
+        }
+
+        Some(unsafe {
+            core::slice::from_raw_parts(self.mods_addr as *const _, self.mods_len as usize)
         })
     }
 }

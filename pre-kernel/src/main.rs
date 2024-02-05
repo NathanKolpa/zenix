@@ -1,6 +1,7 @@
 #![no_std]
 #![no_main]
 #![feature(asm_const)]
+#![feature(panic_info_message)]
 mod bump_memory;
 mod long_mode;
 mod multiboot;
@@ -9,7 +10,6 @@ mod vga;
 use core::{
     arch::{asm, global_asm},
     fmt::Write,
-    u32,
 };
 
 use bootinfo::BootInfo;
@@ -23,14 +23,23 @@ global_asm!(include_str!("boot.s"));
 #[cfg(not(test))]
 #[panic_handler]
 fn panic(info: &core::panic::PanicInfo) -> ! {
-    unsafe {
-        core::arch::asm!("hlt");
+    let msg = info
+        .message()
+        .and_then(|a| a.as_str())
+        .unwrap_or("Uknown error");
+
+    vga::set_fail_msg(msg);
+
+    loop {
+        unsafe {
+            core::arch::asm!("hlt");
+        }
     }
-    loop {}
 }
 
 extern "C" {
     static BUMP_MEMORY_START: u8;
+    static BUMP_MEMORY_END: u8;
 }
 
 #[no_mangle]
@@ -58,21 +67,27 @@ pub extern "C" fn main(multiboot_magic_arg: u32, multiboot_info_addr: u32) {
 
     let mut serial = unsafe { Uart16550::new_and_init(0x3F8) };
 
+    let Some(mods) = info.mods() else {
+        vga::set_fail_msg("No modules loaded. Have you configured your bootloader correctly?");
+        return;
+    };
+
+    let Some(kernel_module) = mods.first() else {
+        vga::set_fail_msg("Expected at least one module, none provided");
+        return;
+    };
+
     let Some(mmap) = info.mmap() else {
         vga::set_fail_msg("Multiboot Info does not contain the mmap_* fields.");
         return;
     };
 
-    for entry in mmap {
-        writeln!(
-            &mut serial,
-            "Entry {} {} {}",
-            entry.addr(),
-            entry.len(),
-            entry.kind(),
-        );
-    }
+    let mut bump_memory = unsafe {
+        BumpMemory::new(
+            VirtualAddress::from(&BUMP_MEMORY_START as *const _),
+            VirtualAddress::from(&BUMP_MEMORY_END as *const _),
+        )
+    };
 
-    let mut bump_memory =
-        unsafe { BumpMemory::new(VirtualAddress::from(&BUMP_MEMORY_START as *const _)) };
+    enter_long_mode(&mut bump_memory)
 }

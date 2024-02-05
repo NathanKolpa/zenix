@@ -6,6 +6,7 @@ use std::{
 fn main() {
     let mut args = env::args();
 
+    let kernel_path = env!("KERNEL_PATH");
     let pre_kernel_path = env!("PRE_KERNEL_PATH");
     let mut cmd = Command::new("qemu-system-x86_64");
     let mut debugger = None;
@@ -23,6 +24,8 @@ fn main() {
     cmd.arg("gtk");
     cmd.arg("-kernel");
     cmd.arg(pre_kernel_path);
+    cmd.arg("-initrd");
+    cmd.arg(kernel_path);
 
     if let Some(first_arg) = args.nth(1) {
         match first_arg.as_str() {

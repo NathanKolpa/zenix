@@ -2,41 +2,17 @@ use core::mem::{align_of, MaybeUninit};
 
 use essentials::address::VirtualAddress;
 
-use crate::vga::{VGA_ADDR, VGA_LEN};
-
-// has to be sorted
-const UNUSABLE_REGIONS: &[(VirtualAddress, usize)] = &[(VGA_ADDR, VGA_LEN)];
-
 pub struct BumpMemory {
     start: VirtualAddress,
     end: VirtualAddress,
-    unusable_regions: &'static [(VirtualAddress, usize)],
 }
 
 impl BumpMemory {
     pub unsafe fn new(start: VirtualAddress, end: VirtualAddress) -> Self {
-        Self {
-            start,
-            end,
-            unusable_regions: UNUSABLE_REGIONS,
-        }
+        Self { start, end }
     }
 
     fn move_start_to_new_pos(&mut self, size: usize) -> VirtualAddress {
-        loop {
-            let new_end = self.start + size;
-
-            if let Some((region_addr, region_len)) = self.unusable_regions.first() {
-                if new_end.is_within(*region_addr, *region_len) {
-                    self.start = *region_addr + *region_len;
-                    self.unusable_regions = &self.unusable_regions[1..self.unusable_regions.len()];
-                    continue;
-                }
-            }
-
-            break;
-        }
-
         if self.start + size >= self.end {
             panic!("Out of bump memory");
         }

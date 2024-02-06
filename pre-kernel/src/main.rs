@@ -2,21 +2,23 @@
 #![no_main]
 #![feature(asm_const)]
 #![feature(panic_info_message)]
+
 mod bump_memory;
 mod long_mode;
 mod multiboot;
+mod paging;
 mod vga;
 
-use core::{
-    arch::{asm, global_asm},
-    fmt::Write,
-};
+use core::arch::{asm, global_asm};
+use core::fmt::Write;
 
 use bootinfo::BootInfo;
 use essentials::address::VirtualAddress;
 use x86_64::device::uart_16550::Uart16550;
 
-use crate::{bump_memory::BumpMemory, long_mode::*, multiboot::MultibootInfo};
+use crate::{
+    bump_memory::BumpMemory, long_mode::*, multiboot::MultibootInfo, paging::setup_paging,
+};
 
 global_asm!(include_str!("boot.s"));
 
@@ -65,8 +67,6 @@ pub extern "C" fn main(multiboot_magic_arg: u32, multiboot_info_addr: u32) {
     let info_ptr = multiboot_info_addr as *const MultibootInfo;
     let info = unsafe { &*info_ptr };
 
-    let mut serial = unsafe { Uart16550::new_and_init(0x3F8) };
-
     let Some(mods) = info.mods() else {
         vga::set_fail_msg("No modules loaded. Have you configured your bootloader correctly?");
         return;
@@ -89,5 +89,5 @@ pub extern "C" fn main(multiboot_magic_arg: u32, multiboot_info_addr: u32) {
         )
     };
 
-    enter_long_mode(&mut bump_memory)
+    unsafe { setup_paging(&mut bump_memory, mmap, kernel_module) }
 }

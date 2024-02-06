@@ -47,4 +47,4 @@ inherits = "release"
 debug = true
 strip = "none"
 split-debuginfo = "packed"
-opt-level = 1
+opt-level = "z"

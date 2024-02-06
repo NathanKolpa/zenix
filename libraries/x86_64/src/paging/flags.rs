@@ -32,6 +32,10 @@ impl PageTableEntryFlags {
         self.set_flag(1, enabled)
     }
 
+    pub const fn set_global(&self, enabled: bool) -> Self {
+        self.set_flag(8, enabled)
+    }
+
     pub const fn set_user_accessible(&self, enabled: bool) -> Self {
         self.set_flag(2, enabled)
     }

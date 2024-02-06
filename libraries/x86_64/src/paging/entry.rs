@@ -16,13 +16,17 @@ impl PageTableEntry {
     const ADDR_MASK: u64 = 0x000f_ffff_ffff_f000;
     const FLAGS_MASK: u64 = !Self::ADDR_MASK;
 
-    pub const fn new(flags: PageTableEntryFlags, addr: PhysicalAddress) -> Self {
+    pub const fn new_u64_addr(flags: PageTableEntryFlags, addr: u64) -> Self {
         let flags_masked = flags.as_u64() & Self::FLAGS_MASK;
-        let addr_masked = addr.as_u64() & Self::ADDR_MASK;
+        let addr_masked = addr & Self::ADDR_MASK;
 
         Self {
             value: flags_masked | addr_masked,
         }
+    }
+
+    pub const fn new(flags: PageTableEntryFlags, addr: PhysicalAddress) -> Self {
+        Self::new_u64_addr(flags, addr.as_u64())
     }
 
     pub fn set_flags(&mut self, flags: PageTableEntryFlags) {

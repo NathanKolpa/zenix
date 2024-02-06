@@ -1,13 +1,10 @@
 ENTRY(_start)
 
 SECTIONS {
-	. = 2M;
+	. = 1M;
 	BUMP_MEMORY_START = .;
 
-
-	/* 2M for the bump memory might be overkill, however it will save memory because it will be mapped using huge pages. */
-
-	. = 4M;
+	. = 2M;
 	BUMP_MEMORY_END = .;
 	PRE_KERNEL_START = .;
 	.multiboot_header : {
@@ -44,7 +41,7 @@ SECTIONS {
 		*(.debug_line .debug_line.*)
 	}
 
-	. = ALIGN(2M);
+	. = ALIGN(4K);
 
 	PRE_KERNEL_END = .;
 }

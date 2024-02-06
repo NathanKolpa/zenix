@@ -23,8 +23,6 @@ extern "C" {
 /// ](https://wiki.osdev.org/Identity_Paging).
 ///
 /// When possible, huge pages are used in favour of smaller 4Kib pages.
-/// This also means that aligning the bump memory en pre-kernel kernel with 2Mib can save memory
-/// when looking at allocated page tables.
 ///
 /// This fuction returns the (both virtual and physical) address of the l4 page.
 pub unsafe fn setup_paging<'a>(

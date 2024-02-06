@@ -1,8 +1,8 @@
-use core::arch::asm;
+use core::{arch::asm, u64};
 
 use x86_64::paging::PageTable;
 
-use crate::bump_memory::BumpMemory;
+use crate::{bump_memory::BumpMemory, multiboot::MultibootMMapEntry};
 
 pub fn extended_cpuid_supported() -> bool {
     let mut output: u32 = 0x80000000;
@@ -37,15 +37,4 @@ pub fn long_mode_supported() -> bool {
     }
 
     (output & 1 << 29) != 0
-}
-
-pub fn enter_long_mode(bump_memory: &mut BumpMemory) {
-    let l4_table = new_empty_page_table(bump_memory);
-}
-
-fn new_empty_page_table(bump_memory: &mut BumpMemory) -> &'static mut PageTable {
-    let table = bump_memory.alloc_struct::<PageTable>();
-    let table = unsafe { table.assume_init_mut() };
-    table.zero();
-    table
 }

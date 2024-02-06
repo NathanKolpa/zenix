@@ -38,6 +38,10 @@ impl MultibootMMapEntry {
     pub fn kind(&self) -> u32 {
         self.kind
     }
+
+    pub fn is_usable(&self) -> bool {
+        self.kind == 1
+    }
 }
 
 #[repr(C)]

@@ -25,11 +25,13 @@ extern "C" {
 /// When possible, huge pages are used in favour of smaller 4Kib pages.
 /// This also means that aligning the bump memory en pre-kernel kernel with 2Mib can save memory
 /// when looking at allocated page tables.
+///
+/// This fuction returns the (both virtual and physical) address of the l4 page.
 pub unsafe fn setup_paging<'a>(
     bump_memory: &mut BumpMemory,
     memory_map: impl Iterator<Item = &'a MultibootMMapEntry>,
     kernel_mod: &MultibootModule,
-) {
+) -> u32 {
     let l4_table = new_empty_page_table(bump_memory);
 
     for mm_entry in memory_map.filter(|e| e.is_usable()) {
@@ -51,6 +53,8 @@ pub unsafe fn setup_paging<'a>(
     // make sure to not enable the "no exec" bit because this is the code we are currently
     // executing.
     map_phys_range(bump_memory, l4_table, 0, false, 3, pre_start, pre_len);
+
+    l4_table as *const _ as u32
 }
 
 fn map_phys_range(
@@ -109,7 +113,14 @@ fn map_phys_range(
 
             new_table
         } else {
-            let table_addr = parent[index as usize].addr_u64() as *mut PageTable;
+            let existing_entry = &mut parent[index as usize];
+            let existing_flags = existing_entry.flags();
+
+            if !no_exec && existing_flags.noexec() {
+                existing_entry.set_flags(existing_flags.set_no_exec(false));
+            }
+
+            let table_addr = existing_entry.addr_u64() as *mut PageTable;
             unsafe { &mut *table_addr }
         };
 

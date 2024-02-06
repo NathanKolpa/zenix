@@ -94,5 +94,8 @@ pub extern "C" fn main(multiboot_magic_arg: u32, multiboot_info_addr: u32) {
         )
     };
 
-    unsafe { setup_paging(&mut bump_memory, mmap, kernel_module) }
+    unsafe {
+        let l4_page_table = setup_paging(&mut bump_memory, mmap, kernel_module);
+        enter_long_mode(l4_page_table);
+    }
 }

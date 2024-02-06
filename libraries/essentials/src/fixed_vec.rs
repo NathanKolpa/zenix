@@ -55,6 +55,10 @@ impl<const SIZE: usize, T> FixedVec<SIZE, T> {
         self.elements.as_ptr() as *const T
     }
 
+    pub const fn is_empty(&self) -> bool {
+        self.len == 0
+    }
+
     pub const fn len(&self) -> usize {
         self.len
     }

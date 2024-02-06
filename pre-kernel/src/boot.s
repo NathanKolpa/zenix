@@ -26,34 +26,26 @@ header_end:
 .global _start
 .type _start, @function
 _start:
-	// From the spec [EAX]: Must contain the magic value '0x2BADB002'; the presence of this value indicates to the operating system that it was loaded by a Multiboot-compliant boot loader (e.g. as opposed to another type of boot loader that the operating system can also be loaded from).
 
-	mov [STACK_TOP], eax
-	mov [STACK_TOP - 4], ebx
+	// setup the stack
+	mov STACK_TOP, esp
+
+	// push arg 1 for main
 	// From the spec: [EBX]: Must contain the 32-bit physical address of the Multiboot information structure provided by the boot loader (see Boot information format).
-
-	cld
-
-	/// setup the stack
-	mov     eax, 1
-	cpuid
-	shr     ebx, 24
-	add     ebx, 1
-	mov     eax, STACK_SIZE
-	mul     ebx
-	add     eax, STACK_BOTTOM
-	mov     esp, eax
-	
-	mov eax, DWORD PTR [STACK_TOP]
-	mov ebx, DWORD PTR [STACK_TOP - 4]
 	push ebx
+
+	// push arg 0 for main
+	// From the spec [EAX]: Must contain the magic value '0x2BADB002'; the presence of this value indicates to the operating system that it was loaded by a Multiboot-compliant boot loader (e.g. as opposed to another type of boot loader that the operating system can also be loaded from).
 	push eax
+
+
 
 	// Go to rust land!
 	call main
 
 
 	// Prevent the cpu from executing memory.
-	// This code should never be executed anyways.
 	cli
+hlt_enter:
 	hlt
+	jmp hlt_enter

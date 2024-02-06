@@ -27,6 +27,16 @@ fn main() {
     cmd.arg("-initrd");
     cmd.arg(kernel_path);
 
+    // debug options
+    cmd.arg("-d");
+    cmd.arg("guest_errors");
+    cmd.arg("-d");
+    cmd.arg("unimp");
+    cmd.arg("-d");
+    cmd.arg("cpu_reset");
+    cmd.arg("-no-reboot");
+    cmd.arg("-no-shutdown");
+
     if let Some(first_arg) = args.nth(1) {
         match first_arg.as_str() {
             "gdb" => {

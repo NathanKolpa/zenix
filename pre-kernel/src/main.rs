@@ -54,6 +54,11 @@ pub extern "C" fn main(multiboot_magic_arg: u32, multiboot_info_addr: u32) {
         return;
     }
 
+    if !cpuid_supported() {
+        vga::set_fail_msg("CPUID not supported by your processor.");
+        return;
+    }
+
     if !extended_cpuid_supported() {
         vga::set_fail_msg("Extended CPUID not supported by your processor.");
         return;

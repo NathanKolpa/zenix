@@ -7,13 +7,9 @@ SECTIONS {
 	. = 2M;
 	BUMP_MEMORY_END = .;
 	PRE_KERNEL_START = .;
-	.multiboot_header : {
+	.text ALIGN(0x10) : {
 		*(.multiboot_header)
-	}
-	.start : {
 		*(.start)
-	}
-	.text : {
 		*(.text .text.*)
 	}
 	.bss : {

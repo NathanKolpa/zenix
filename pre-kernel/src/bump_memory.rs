@@ -1,4 +1,4 @@
-use core::mem::{align_of, MaybeUninit};
+use core::mem::{align_of, size_of, MaybeUninit};
 
 use essentials::address::VirtualAddress;
 
@@ -29,9 +29,10 @@ impl BumpMemory {
 
     pub fn alloc_struct<T>(&mut self) -> &'static mut MaybeUninit<T> {
         let alingment = align_of::<T>();
-        let size = align_of::<T>();
+        let size = size_of::<T>();
 
-        let alignment_offset = alingment % self.start.as_usize();
+        let alignment_offset = self.start.as_usize() % alingment;
+
         let aligned_size = size + alignment_offset;
         let block = self.alloc(aligned_size);
 

@@ -35,6 +35,7 @@ pub unsafe fn setup_paging<'a>(
     for mm_entry in memory_map.filter(|e| e.is_usable()) {
         let addr = mm_entry.addr();
         let len = mm_entry.len();
+
         map_phys_range(bump_memory, l4_table, PHYS_MEM_OFFSET, true, 3, addr, len);
     }
 
@@ -51,6 +52,9 @@ pub unsafe fn setup_paging<'a>(
     // make sure to not enable the "no exec" bit because this is the code we are currently
     // executing.
     map_phys_range(bump_memory, l4_table, 0, false, 3, pre_start, pre_len);
+
+    // Mapping the first 1MiB (without no exec) prevents page faults.
+    map_phys_range(bump_memory, l4_table, 0, false, 3, 0, 1024 * 1024);
 
     l4_table as *const _ as u32
 }
@@ -89,7 +93,12 @@ fn map_phys_range(
     if let Some(level_page_size) = level_page_size.map(|x| x.as_usize() as u64) {
         while len >= level_page_size {
             let index = virt_addr_to_index(level, start + offset);
-            let entry = PageTableEntry::new_u64_addr(flags.set_huge(true), start);
+
+            if index >= 512 {
+                return (start, len);
+            }
+
+            let entry = PageTableEntry::new_u64_addr(flags.set_huge(level > 0), start);
 
             parent[index as usize] = entry;
 
@@ -102,6 +111,10 @@ fn map_phys_range(
     // l1 pages should implicitly not enter this loop.
     while len >= PAGE_SIZE {
         let index = virt_addr_to_index(level, start + offset);
+
+        if index >= 512 {
+            break;
+        }
 
         let table = if !parent[index as usize].flags().present() {
             let new_table = new_empty_page_table(bump_memory);
@@ -133,11 +146,7 @@ fn virt_addr_to_index(level: u8, mut addr: u64) -> u16 {
         (value % 512) as u16
     }
 
-    addr >>= 12;
-
-    for _ in 0..level {
-        addr >>= 9;
-    }
+    addr >>= 12 + 9 * level;
 
     truncate_index(addr)
 }

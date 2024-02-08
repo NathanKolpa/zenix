@@ -21,4 +21,3 @@ pub fn setup_gdt_table(bump_memory: &mut BumpMemory) -> InitialGdt {
         kernel_data,
     }
 }
-

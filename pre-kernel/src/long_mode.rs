@@ -86,7 +86,7 @@ pub unsafe fn enter_long_mode(l4_page_table: u32, gdt_table: InitialGdt) {
         // enable PAE-paging by setting the PAE-bit in the fourth control register:
         "mov eax, cr4",
         "or eax, {PAE_FLAG}",
-        " mov cr4, eax",
+        "mov cr4, eax",
         // Now, paging is set up, but it isn't enabled yet.
 
         // There's not much left to do. We should set the long mode bit in the EFER MSR and then we should enable paging and protected mode and then we are in compatibility mode (which is part of long mode.
@@ -107,14 +107,4 @@ pub unsafe fn enter_long_mode(l4_page_table: u32, gdt_table: InitialGdt) {
          LM_BIT = const LM_BIT,
          PG_BIT = const PG_BIT,
     );
-
-    gdt_table.table.load();
-    //gdt_table.kernel_data.load_into_ds();
-    //gdt_table.kernel_data.load_into_es();
-    //gdt_table.kernel_data.load_into_fs();
-    //gdt_table.kernel_data.load_into_gs();
-    //gdt_table.kernel_data.load_into_gs();
-    //gdt_table.kernel_data.load_into_ss();
-
-    loop {}
 }

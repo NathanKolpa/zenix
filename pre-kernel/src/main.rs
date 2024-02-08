@@ -4,6 +4,7 @@
 #![feature(panic_info_message)]
 
 mod bump_memory;
+mod gdt;
 mod long_mode;
 mod multiboot;
 mod paging;
@@ -17,7 +18,8 @@ use essentials::address::VirtualAddress;
 use x86_64::device::uart_16550::Uart16550;
 
 use crate::{
-    bump_memory::BumpMemory, long_mode::*, multiboot::MultibootInfo, paging::setup_paging,
+    bump_memory::BumpMemory, gdt::setup_gdt_table, long_mode::*, multiboot::MultibootInfo,
+    paging::setup_paging,
 };
 
 global_asm!(include_str!("boot.s"));
@@ -96,6 +98,8 @@ pub extern "C" fn main(multiboot_magic_arg: u32, multiboot_info_addr: u32) {
 
     unsafe {
         let l4_page_table = setup_paging(&mut bump_memory, mmap, kernel_module);
-        enter_long_mode(l4_page_table);
+        let gdt_table = setup_gdt_table(&mut bump_memory);
+
+        //enter_long_mode(l4_page_table, gdt_table);
     }
 }

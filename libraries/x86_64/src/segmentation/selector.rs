@@ -74,6 +74,27 @@ impl SegmentSelector {
         let _value = self.value;
         asm!("mov ss, {0:x}", in(reg) self.value, options(nostack, preserves_flags));
     }
+
+    #[cfg(any(target_arch = "x86_64", target_arch = "x86"))]
+    #[doc(cfg(any(target_arch = "x86_64", target_arch = "x86")))]
+    pub unsafe fn load_into_fs(&self) {
+        let _value = self.value;
+        asm!("mov fs, {0:x}", in(reg) self.value, options(nostack, preserves_flags));
+    }
+
+    #[cfg(any(target_arch = "x86_64", target_arch = "x86"))]
+    #[doc(cfg(any(target_arch = "x86_64", target_arch = "x86")))]
+    pub unsafe fn load_into_gs(&self) {
+        let _value = self.value;
+        asm!("mov gs, {0:x}", in(reg) self.value, options(nostack, preserves_flags));
+    }
+
+    #[cfg(any(target_arch = "x86_64", target_arch = "x86"))]
+    #[doc(cfg(any(target_arch = "x86_64", target_arch = "x86")))]
+    pub unsafe fn load_into_es(&self) {
+        let _value = self.value;
+        asm!("mov es, {0:x}", in(reg) self.value, options(nostack, preserves_flags));
+    }
 }
 
 impl Debug for SegmentSelector {

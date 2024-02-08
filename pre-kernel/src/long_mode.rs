@@ -1,5 +1,9 @@
 use core::arch::asm;
 
+use x86_64::segmentation::GlobalDescriptorTable;
+
+use crate::gdt::InitialGdt;
+
 pub fn cpuid_supported() -> bool {
     const CHECK_BIT: u32 = 1 << 21;
     let modified: u32;
@@ -69,7 +73,7 @@ pub fn long_mode_supported() -> bool {
 
 #[no_mangle] // make debugging easier
 #[inline(never)]
-pub unsafe fn enter_long_mode(l4_page_table: u32) {
+pub unsafe fn enter_long_mode(l4_page_table: u32, gdt_table: InitialGdt) {
     const PAE_FLAG: u32 = 1 << 5;
     const EFER_MSR: u32 = 0xC0000080;
     const LM_BIT: u32 = 1 << 8;
@@ -103,6 +107,14 @@ pub unsafe fn enter_long_mode(l4_page_table: u32) {
          LM_BIT = const LM_BIT,
          PG_BIT = const PG_BIT,
     );
+
+    gdt_table.table.load();
+    //gdt_table.kernel_data.load_into_ds();
+    //gdt_table.kernel_data.load_into_es();
+    //gdt_table.kernel_data.load_into_fs();
+    //gdt_table.kernel_data.load_into_gs();
+    //gdt_table.kernel_data.load_into_gs();
+    //gdt_table.kernel_data.load_into_ss();
 
     loop {}
 }

@@ -1,6 +1,6 @@
 use crate::segmentation::*;
 use crate::{DescriptorTablePointer, PrivilegeLevel};
-use core::mem::size_of;
+use core::{mem::size_of, u64, usize};
 use essentials::address::VirtualAddress;
 
 #[derive(Debug)]
@@ -28,7 +28,7 @@ impl SegmentDescriptor {
         }
     }
 
-    pub fn size(&self) -> usize {
+    pub fn size(&self) -> u64 {
         match self {
             SegmentDescriptor::Normal(_) | SegmentDescriptor::NormalSystem(_) => 1,
             SegmentDescriptor::LongSystem(_) => 2,
@@ -38,7 +38,7 @@ impl SegmentDescriptor {
 
 pub struct GlobalDescriptorTable {
     table: [u64; 10],
-    len: usize,
+    len: u64,
 }
 
 impl GlobalDescriptorTable {
@@ -53,11 +53,12 @@ impl GlobalDescriptorTable {
         let index = self.len;
         let descriptor_size = descriptor.size();
 
-        if index + descriptor_size > self.table.len() {
+        if index + descriptor_size > self.table.len() as u64 {
             return None;
         }
 
         self.len += descriptor_size;
+        let index = index as usize;
 
         match descriptor {
             SegmentDescriptor::Normal(segment) => {
@@ -87,7 +88,7 @@ impl GlobalDescriptorTable {
 
     fn pointer(&self) -> DescriptorTablePointer {
         DescriptorTablePointer::new(
-            (self.len * size_of::<u64>() - 1) as u16,
+            (self.len * size_of::<u64>() as u64 - 1) as u16,
             VirtualAddress::from(self as *const _),
         )
     }

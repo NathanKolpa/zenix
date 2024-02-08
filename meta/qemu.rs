@@ -32,8 +32,6 @@ fn main() {
     cmd.arg("guest_errors");
     cmd.arg("-d");
     cmd.arg("unimp");
-    cmd.arg("-d");
-    cmd.arg("cpu_reset");
     cmd.arg("-no-reboot");
     cmd.arg("-no-shutdown");
 
@@ -62,8 +60,6 @@ fn main() {
                 debug_cmd.arg("c");
                 debug_cmd.arg("-ex");
                 debug_cmd.arg("display/i $pc");
-                debug_cmd.arg("-ex");
-                debug_cmd.arg("set confirm on");
 
                 debugger = Some(debug_cmd);
             }

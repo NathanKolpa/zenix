@@ -102,6 +102,4 @@ pub extern "C" fn main(multiboot_magic_arg: u32, multiboot_info_addr: u32) {
 
         enter_long_mode(l4_page_table, gdt_table);
     }
-
-    loop {}
 }

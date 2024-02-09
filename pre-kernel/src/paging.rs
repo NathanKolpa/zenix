@@ -43,18 +43,14 @@ pub unsafe fn setup_paging<'a>(
     let pre_end = unsafe { &PRE_KERNEL_END as *const _ as u64 };
     let pre_len = pre_end - pre_start;
 
-    let bump_start = unsafe { &BUMP_MEMORY_START as *const _ as u64 };
+    // Mapping the first 1Mib (without no exec) prevents page faults.
+    // We include the bump memory with it so we can use a single huge page.
     let bump_end = unsafe { &BUMP_MEMORY_END as *const _ as u64 };
-    let bump_len = bump_end - bump_start;
-
-    map_phys_range(bump_memory, l4_table, 0, true, 3, bump_start, bump_len);
+    map_phys_range(bump_memory, l4_table, 0, false, 3, 0, bump_end);
 
     // make sure to not enable the "no exec" bit because this is the code we are currently
     // executing.
     map_phys_range(bump_memory, l4_table, 0, false, 3, pre_start, pre_len);
-
-    // Mapping the first 1MiB (without no exec) prevents page faults.
-    map_phys_range(bump_memory, l4_table, 0, false, 3, 0, 1024 * 1024);
 
     l4_table as *const _ as u32
 }

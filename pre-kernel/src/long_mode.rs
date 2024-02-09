@@ -1,7 +1,5 @@
 use core::arch::asm;
 
-use x86_64::segmentation::GlobalDescriptorTable;
-
 use crate::gdt::InitialGdt;
 
 pub fn cpuid_supported() -> bool {
@@ -103,8 +101,17 @@ pub unsafe fn enter_long_mode(l4_page_table: u32, gdt_table: InitialGdt) {
          l4_page_table = in(reg) l4_page_table,
          out("eax") _,
          in("ecx") EFER_MSR,
+         out("rdx") _, // [RDMSR] On processors that support the Intel 64 architecture, the high-order 32 bits of each of RAX and RDX are cleared
          PAE_FLAG = const PAE_FLAG,
          LM_BIT = const LM_BIT,
          PG_BIT = const PG_BIT,
     );
+
+    // load the gdt with data segments with long mode bits.
+    gdt_table.table.load();
+    gdt_table.kernel_data.load_into_ds();
+    gdt_table.kernel_data.load_into_es();
+    gdt_table.kernel_data.load_into_fs();
+    gdt_table.kernel_data.load_into_gs();
+    gdt_table.kernel_data.load_into_ss();
 }

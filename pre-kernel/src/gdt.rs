@@ -1,4 +1,4 @@
-use x86_64::{segmentation::*, DescriptorTablePointer};
+use x86_64::segmentation::*;
 
 use crate::bump_memory::BumpMemory;
 

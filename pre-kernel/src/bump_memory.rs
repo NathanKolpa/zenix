@@ -31,7 +31,8 @@ impl BumpMemory {
         let alingment = align_of::<T>();
         let size = size_of::<T>();
 
-        let alignment_offset = self.start.as_usize() % alingment;
+        let alignment_offset =
+            ((self.start.as_usize() + alingment - 1) & !(alingment - 1)) - self.start.as_usize();
 
         let aligned_size = size + alignment_offset;
         let block = self.alloc(aligned_size);

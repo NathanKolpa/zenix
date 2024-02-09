@@ -27,6 +27,13 @@ members = [
 	"libraries/x86_64",
 	"libraries/bootinfo",
 	"libraries/elf",
+	"libraries/test_runner",
+]
+
+default-members = [
+	"libraries/essentials",
+	"libraries/x86_64",
+	"libraries/elf",
 ]
 
 [workspace.dependencies]
@@ -34,6 +41,7 @@ essentials = { path = "libraries/essentials" }
 x86_64 = { path = "libraries/x86_64" }
 bootinfo = { path = "libraries/bootinfo" }
 elf = { path = "libraries/elf" }
+test_runner = { path = "libraries/test_runner" }
 
 
 [profile.pre-kernel-release]

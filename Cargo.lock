@@ -18,10 +18,17 @@ checksum = "1f11d1b6f220515550211f3c3b70b2ac027e56f2bee96d341494a76f162d4209"
 [[package]]
 name = "elf"
 version = "0.1.0"
+dependencies = [
+ "essentials",
+ "test_runner",
+]
 
 [[package]]
 name = "essentials"
 version = "0.1.0"
+dependencies = [
+ "test_runner",
+]
 
 [[package]]
 name = "kernel"
@@ -43,10 +50,15 @@ dependencies = [
 ]
 
 [[package]]
+name = "test_runner"
+version = "0.1.0"
+
+[[package]]
 name = "x86_64"
 version = "0.1.0"
 dependencies = [
  "essentials",
+ "test_runner",
 ]
 
 [[package]]

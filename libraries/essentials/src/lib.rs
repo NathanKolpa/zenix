@@ -1,6 +1,8 @@
 //! Simple containers and primitives.
 
-#![no_std]
+#![cfg_attr(not(test), no_std)]
+#![feature(custom_test_frameworks)]
+#![test_runner(test_runner::runner)]
 #![feature(doc_cfg)]
 
 pub mod address;

@@ -3,3 +3,6 @@ name = "essentials"
 edition = "2021"
 version.workspace = true
 license.workspace = true
+
+[dev-dependencies]
+test_runner = { workspace = true }

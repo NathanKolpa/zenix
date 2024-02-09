@@ -31,6 +31,7 @@ members = [
 ]
 
 default-members = [
+	".",
 	"libraries/essentials",
 	"libraries/x86_64",
 	"libraries/elf",

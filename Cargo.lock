@@ -16,6 +16,10 @@ source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "1f11d1b6f220515550211f3c3b70b2ac027e56f2bee96d341494a76f162d4209"
 
 [[package]]
+name = "elf"
+version = "0.1.0"
+
+[[package]]
 name = "essentials"
 version = "0.1.0"
 
@@ -33,6 +37,7 @@ name = "pre-kernel"
 version = "0.1.0"
 dependencies = [
  "bootinfo",
+ "elf",
  "essentials",
  "x86_64",
 ]

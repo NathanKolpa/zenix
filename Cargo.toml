@@ -26,12 +26,14 @@ members = [
 	"libraries/essentials",
 	"libraries/x86_64",
 	"libraries/bootinfo",
+	"libraries/elf",
 ]
 
 [workspace.dependencies]
 essentials = { path = "libraries/essentials" }
 x86_64 = { path = "libraries/x86_64" }
 bootinfo = { path = "libraries/bootinfo" }
+elf = { path = "libraries/elf" }
 
 
 [profile.pre-kernel-release]

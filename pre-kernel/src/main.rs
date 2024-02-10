@@ -100,6 +100,6 @@ pub extern "C" fn main(multiboot_magic_arg: u32, multiboot_info_addr: u32) {
         let l4_page_table = setup_paging(&mut bump_memory, mmap, kernel_module);
         let gdt_table = setup_gdt_table(&mut bump_memory);
 
-        enter_long_mode(l4_page_table, gdt_table);
+        enter_long_mode(l4_page_table, &gdt_table);
     }
 }

@@ -6,6 +6,17 @@ SECTIONS {
 
 	. = 2M;
 	BUMP_MEMORY_END = .;
+
+
+	/* allow a stack canary to be mapped */
+	. = . + 4K;
+
+	STACK_START = .;
+	. = . + 64K;
+	STACK_END = .;
+
+	. = . + 4K;
+
 	PRE_KERNEL_START = .;
 	.text ALIGN(0x10) : {
 		*(.multiboot_header)
@@ -38,6 +49,7 @@ SECTIONS {
 	}
 
 	. = ALIGN(4K);
-
 	PRE_KERNEL_END = .;
+
+
 }

@@ -12,15 +12,6 @@ header_start:
 	.long  -(MULTIBOOT_HEADER_MAGIC + MULTIBOOT_HEADER_FLAGS) // checksum
 header_end:
 
-.section .bss
-	.set STACK_SIZE, 16384
-
-	.align 16
-	STACK_BOTTOM:
-	.skip STACK_SIZE
-	STACK_TOP:
-	.skip 4
-
 .code32
 .section .text
 .global _start
@@ -28,7 +19,8 @@ header_end:
 _start:
 
 	// setup the stack
-	mov STACK_TOP, esp
+	mov esp, 0x210400 // 2M + 64K + 4K
+	mov ebp, esp
 
 	// push arg 1 for main
 	// From the spec: [EBX]: Must contain the 32-bit physical address of the Multiboot information structure provided by the boot loader (see Boot information format).

@@ -71,11 +71,14 @@ pub fn long_mode_supported() -> bool {
 
 #[no_mangle] // make debugging easier
 #[inline(never)]
-pub unsafe fn enter_long_mode(l4_page_table: u32, gdt_table: InitialGdt) {
+pub unsafe fn enter_long_mode(l4_page_table: u32, gdt_table: &InitialGdt) {
     const PAE_FLAG: u32 = 1 << 5;
     const EFER_MSR: u32 = 0xC0000080;
-    const LM_BIT: u32 = 1 << 8;
     const PG_BIT: u32 = 1 << 31;
+
+    const LM_BIT: u32 = 1 << 8;
+    const NXE_BIT: u32 = 1 << 11;
+    const EFER_BITS: u32 = LM_BIT | NXE_BIT;
 
     asm!(
         // load the l4 page table
@@ -88,8 +91,9 @@ pub unsafe fn enter_long_mode(l4_page_table: u32, gdt_table: InitialGdt) {
         // Now, paging is set up, but it isn't enabled yet.
 
         // There's not much left to do. We should set the long mode bit in the EFER MSR and then we should enable paging and protected mode and then we are in compatibility mode (which is part of long mode.
+        // The no execute bit is also set
         "rdmsr",
-        "or eax, {LM_BIT}",
+        "or eax, {EFER_BITS}",
         "wrmsr",
 
         // Enabling paging
@@ -103,7 +107,7 @@ pub unsafe fn enter_long_mode(l4_page_table: u32, gdt_table: InitialGdt) {
          in("ecx") EFER_MSR,
          out("rdx") _, // [RDMSR] On processors that support the Intel 64 architecture, the high-order 32 bits of each of RAX and RDX are cleared
          PAE_FLAG = const PAE_FLAG,
-         LM_BIT = const LM_BIT,
+         EFER_BITS = const EFER_BITS,
          PG_BIT = const PG_BIT,
     );
 

@@ -13,6 +13,9 @@ extern "C" {
 
     static PRE_KERNEL_START: u8;
     static PRE_KERNEL_END: u8;
+
+    static STACK_START: u8;
+    static STACK_END: u8;
 }
 
 /// Setup paging before entering long mode.
@@ -43,13 +46,16 @@ pub unsafe fn setup_paging<'a>(
     let pre_end = unsafe { &PRE_KERNEL_END as *const _ as u64 };
     let pre_len = pre_end - pre_start;
 
-    // Mapping the first 1Mib (without no exec) prevents page faults.
-    // We include the bump memory with it so we can use a single huge page.
+    let bump_start = unsafe { &BUMP_MEMORY_START as *const _ as u64 };
     let bump_end = unsafe { &BUMP_MEMORY_END as *const _ as u64 };
-    map_phys_range(bump_memory, l4_table, 0, false, 3, 0, bump_end);
+    let bump_len = bump_end - bump_start;
 
-    // make sure to not enable the "no exec" bit because this is the code we are currently
-    // executing.
+    let stack_start = unsafe { &STACK_START as *const _ as u64 };
+    let stack_end = unsafe { &STACK_END as *const _ as u64 };
+    let stack_len = stack_end - stack_start;
+
+    map_phys_range(bump_memory, l4_table, 0, true, 3, bump_start, bump_len);
+    map_phys_range(bump_memory, l4_table, 0, true, 3, stack_start, stack_len);
     map_phys_range(bump_memory, l4_table, 0, false, 3, pre_start, pre_len);
 
     l4_table as *const _ as u32
@@ -94,7 +100,9 @@ fn map_phys_range(
                 return (start, len);
             }
 
-            let entry = PageTableEntry::new_u64_addr(flags.set_huge(level > 0), start);
+            let leaf_page_flags = flags.set_huge(level > 0);
+
+            let entry = PageTableEntry::new_u64_addr(leaf_page_flags, start);
 
             parent[index as usize] = entry;
 

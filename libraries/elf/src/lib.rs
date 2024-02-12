@@ -2,4 +2,9 @@
 #![feature(custom_test_frameworks)]
 #![test_runner(test_runner::runner)]
 
-mod header;
+mod reader;
+mod structure;
+
+pub use reader::header::*;
+pub use reader::ident::*;
+pub use reader::ReadError;

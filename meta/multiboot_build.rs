@@ -17,13 +17,26 @@ fn build_pre_kernel(out_dir: &Path) -> PathBuf {
     let cargo = std::env::var("CARGO").unwrap_or_else(|_| "cargo".into());
     let mut cmd = Command::new(cargo);
     cmd.arg("install").arg("pre-kernel");
-    let local_path = Path::new(env!("CARGO_MANIFEST_DIR")).join("pre-kernel");
-    let target_json_path = local_path.join("target.json");
-    if local_path.exists() {
-        cmd.arg("--path").arg(&local_path);
-        println!("cargo:rerun-if-changed={}", local_path.display());
+
+    let project_root = Path::new(env!("CARGO_MANIFEST_DIR"));
+
+    let pre_kernel_path = project_root.join("pre-kernel");
+    let libraries_path = project_root.join("libraries");
+    let library_paths = [
+        libraries_path.join("x86_64"),
+        libraries_path.join("elf"),
+        libraries_path.join("essentials"),
+    ];
+
+    let target_json_path = pre_kernel_path.join("target.json");
+    if pre_kernel_path.exists() {
+        cmd.arg("--path").arg(&pre_kernel_path);
+        println!("cargo:rerun-if-changed={}", pre_kernel_path.display());
+
+        for library_path in library_paths {
+            println!("cargo:rerun-if-changed={}", library_path.display());
+        }
     }
-    cmd.arg("--locked");
     cmd.arg("-v");
     cmd.arg("--target").arg(target_json_path);
     cmd.arg("-Zbuild-std=core")

@@ -4,18 +4,37 @@ use essentials::address::VirtualAddress;
 use x86_64::port::Port;
 
 pub fn set_fail_msg(message: &str) {
-    let mut cursor = msg("Pre kernel panic: ", 0, VGA_WHITE, VGA_RED);
-    cursor = msg(message, cursor, VGA_WHITE, VGA_RED);
-    msg(
-        "Halting boot procedure...",
-        cursor + (VGA_WIDTH - cursor % VGA_WIDTH),
-        VGA_WHITE,
+    let mut cursor = msg("Failure", STATUS_START, VGA_RED, VGA_BLACK);
+    cursor = msg("Reason: ", next_line(cursor), VGA_RED, VGA_BLACK);
+    cursor = msg(message, cursor, VGA_RED, VGA_BLACK);
+    cursor = msg(
+        "Halting CPU. Reset your machine to try again.",
+        next_line(cursor),
         VGA_RED,
+        VGA_BLACK,
     );
 }
 
+const RUNNING_MSG: &str = "Running pre kernel: ";
+const STATUS_START: usize = RUNNING_MSG.len();
+
 pub fn set_running_msg() {
-    msg("Running pre kernel...", 0, VGA_WHITE, VGA_BLACK);
+    msg(RUNNING_MSG, 0, VGA_WHITE, VGA_BLACK);
+}
+
+pub fn set_success_msg() {
+    let cursor = msg("Ok", STATUS_START, VGA_GREEN, VGA_BLACK);
+
+    msg(
+        "Entering the Zenix kernel...",
+        next_line(cursor),
+        VGA_WHITE,
+        VGA_BLACK,
+    );
+}
+
+const fn next_line(cursor: usize) -> usize {
+    (cursor / VGA_WIDTH + 1) * VGA_WIDTH
 }
 
 pub fn clear_screen() {
@@ -54,7 +73,8 @@ pub const VGA_LEN: usize = VGA_SIZE * size_of::<u16>();
 
 const VGA_WHITE: u8 = 15;
 const VGA_BLACK: u8 = 0;
-const VGA_RED: u8 = 4;
+const VGA_RED: u8 = 12;
+const VGA_GREEN: u8 = 2;
 
 fn write_cell(pos: usize, char: u8, fg: u8, bg: u8) {
     const SCREEN_PTR: *mut u16 = VGA_ADDR.as_mut_ptr();

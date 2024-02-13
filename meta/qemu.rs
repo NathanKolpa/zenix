@@ -1,10 +1,34 @@
 use std::{
     env,
+    fmt::Debug,
     process::{Command, Stdio},
 };
 
-fn main() {
-    let mut args = env::args();
+pub enum CliError {
+    UnexpectedArg(String),
+}
+
+impl Debug for CliError {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        match self {
+            CliError::UnexpectedArg(got) => write!(f, "unexpected argument \"{got}\""),
+        }
+    }
+}
+
+fn main() -> Result<(), CliError> {
+    let mut verbose = false;
+    let mut gdb = false;
+
+    for arg in env::args().skip(1) {
+        match arg.as_str() {
+            "--verbose" | "-v" => verbose = true,
+            "--gdb" | "-d" => gdb = true,
+            _ => {
+                return Err(CliError::UnexpectedArg(arg));
+            }
+        }
+    }
 
     let kernel_path = env!("KERNEL_PATH");
     let pre_kernel_path = env!("PRE_KERNEL_PATH");
@@ -32,41 +56,40 @@ fn main() {
     cmd.arg("guest_errors");
     cmd.arg("-d");
     cmd.arg("unimp");
+
+    if verbose {
+        cmd.arg("-d");
+        cmd.arg("int");
+    }
+
     cmd.arg("-no-reboot");
     cmd.arg("-no-shutdown");
 
-    if let Some(first_arg) = args.nth(1) {
-        match first_arg.as_str() {
-            "gdb" => {
-                cmd.arg("-gdb");
-                cmd.arg("tcp::1234");
-                cmd.arg("-S");
+    if gdb {
+        cmd.arg("-gdb");
+        cmd.arg("tcp::1234");
+        cmd.arg("-S");
 
-                let mut debug_cmd = Command::new("gdb");
-                debug_cmd.stdin(Stdio::inherit());
-                debug_cmd.stderr(Stdio::inherit());
-                debug_cmd.stdout(Stdio::inherit());
-                debug_cmd.arg("-ex");
-                debug_cmd.arg("set confirm off");
-                debug_cmd.arg("-ex");
-                debug_cmd.arg("set disassembly-flavor intel");
-                debug_cmd.arg("-ex");
-                debug_cmd.arg("target remote localhost:1234");
-                debug_cmd.arg("-ex");
-                debug_cmd.arg(format!("add-symbol-file {pre_kernel_path}"));
-                debug_cmd.arg("-ex");
-                debug_cmd.arg("break _start");
-                debug_cmd.arg("-ex");
-                debug_cmd.arg("c");
-                debug_cmd.arg("-ex");
-                debug_cmd.arg("display/i $pc");
+        let mut debug_cmd = Command::new("gdb");
+        debug_cmd.stdin(Stdio::inherit());
+        debug_cmd.stderr(Stdio::inherit());
+        debug_cmd.stdout(Stdio::inherit());
+        debug_cmd.arg("-ex");
+        debug_cmd.arg("set confirm off");
+        debug_cmd.arg("-ex");
+        debug_cmd.arg("set disassembly-flavor intel");
+        debug_cmd.arg("-ex");
+        debug_cmd.arg("target remote localhost:1234");
+        debug_cmd.arg("-ex");
+        debug_cmd.arg(format!("add-symbol-file {pre_kernel_path}"));
+        debug_cmd.arg("-ex");
+        debug_cmd.arg("break _start");
+        debug_cmd.arg("-ex");
+        debug_cmd.arg("c");
+        debug_cmd.arg("-ex");
+        debug_cmd.arg("display/i $pc");
 
-                debugger = Some(debug_cmd);
-            }
-            arg => {
-                eprintln!("unknown argument {arg:?}")
-            }
-        }
+        debugger = Some(debug_cmd);
     }
 
     eprintln!("{cmd:?}");
@@ -79,4 +102,6 @@ fn main() {
 
     qemu_proc.wait().unwrap();
     debugger_proc.and_then(|mut proc| proc.wait().ok());
+
+    Ok(())
 }

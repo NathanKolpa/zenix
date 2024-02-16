@@ -36,6 +36,7 @@ impl SegmentDescriptor {
     }
 }
 
+#[repr(C, align(8))]
 pub struct GlobalDescriptorTable {
     table: [u64; 10],
     len: u64,

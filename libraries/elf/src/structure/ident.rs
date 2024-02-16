@@ -2,35 +2,13 @@
 #[derive(Debug, Clone, Copy, PartialEq)]
 pub struct IdentHeader {
     pub magic: [u8; 4],
-    pub bits: Bits,
-    pub endianness: Endianness,
-    pub version: IdentVersion,
+    pub bits: u8,
+    pub endianness: u8,
+    pub version: u8,
     _os_abi: u8,
     _abi_version: u8,
     _reserved: [u8; 7],
 }
-
-#[repr(u8)]
-#[derive(Debug, Clone, Copy, PartialEq)]
-pub enum IdentVersion {
-    Original = 1,
-    Other,
-}
-
-#[repr(u8)]
-#[derive(Debug, Clone, Copy, PartialEq)]
-pub enum Bits {
-    Bits32 = 1,
-    Bits64 = 2,
-}
-
-#[repr(u8)]
-#[derive(Debug, Clone, Copy, PartialEq)]
-pub enum Endianness {
-    Little = 1,
-    Big = 2,
-}
-
 #[cfg(test)]
 mod tests {
     use core::mem::transmute_copy;
@@ -46,9 +24,9 @@ mod tests {
 
         let ident: IdentHeader = unsafe { transmute_copy(&bytes) };
 
-        assert_eq!(ident.bits, Bits::Bits32);
-        assert_eq!(ident.endianness, Endianness::Little);
-        assert_eq!(ident.version, IdentVersion::Original);
+        assert_eq!(ident.bits, 1);
+        assert_eq!(ident.endianness, 1);
+        assert_eq!(ident.version, 1);
     }
 
     #[test_case]
@@ -60,8 +38,8 @@ mod tests {
 
         let ident: IdentHeader = unsafe { transmute_copy(&bytes) };
 
-        assert_eq!(ident.bits, Bits::Bits64);
-        assert_eq!(ident.endianness, Endianness::Little);
-        assert_eq!(ident.version, IdentVersion::Original);
+        assert_eq!(ident.bits, 2);
+        assert_eq!(ident.endianness, 1);
+        assert_eq!(ident.version, 1);
     }
 }

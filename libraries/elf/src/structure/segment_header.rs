@@ -2,7 +2,7 @@
 #[derive(Debug, Clone, Copy, PartialEq)]
 pub struct SectionHeader<P> {
     name_offset: u32,
-    kind: SectionKind,
+    kind: u32,
     flags: P,
     addr: P,
     offset: P,
@@ -11,10 +11,4 @@ pub struct SectionHeader<P> {
     info: u32,
     addr_align: P,
     entry_size: P,
-}
-
-#[repr(u32)]
-#[derive(Debug, Clone, Copy, PartialEq)]
-pub enum SectionKind {
-    Null,
 }

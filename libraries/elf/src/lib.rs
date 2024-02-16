@@ -7,4 +7,5 @@ mod structure;
 
 pub use reader::header::*;
 pub use reader::ident::*;
-pub use reader::ReadError;
+pub use reader::program_header::*;
+pub use reader::ElfReadError;

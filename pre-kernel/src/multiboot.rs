@@ -1,4 +1,4 @@
-use core::mem::size_of;
+use core::{mem::size_of, u32};
 
 #[repr(C)]
 pub struct MultibootModule {
@@ -15,6 +15,14 @@ impl MultibootModule {
 
     pub fn len(&self) -> u32 {
         self.end - self.start
+    }
+
+    pub fn bytes(&self) -> &[u8] {
+        unsafe { core::slice::from_raw_parts(self.addr() as *const _, self.len() as usize) }
+    }
+
+    pub fn bytes_mut(&mut self) -> &mut [u8] {
+        unsafe { core::slice::from_raw_parts_mut(self.addr() as *mut _, self.len() as usize) }
     }
 }
 
@@ -119,11 +127,23 @@ impl MultibootInfo {
         })
     }
 
-    pub fn mods(&self) -> Option<&[MultibootModule]> {
+    pub fn take_first_mod(&mut self) -> Option<&'static mut MultibootModule> {
         if self.flags & (1 << 3) == 0 {
             return None;
         }
 
+        if self.mods_len == 0 {
+            return None;
+        }
+
+        self.mods_len -= 1;
+        let addr = self.mods_addr;
+        self.mods_addr += size_of::<MultibootModule>() as u32;
+
+        Some(unsafe { &mut *(addr as *mut MultibootModule) })
+    }
+
+    pub fn mods(&self) -> Option<&[MultibootModule]> {
         Some(unsafe {
             core::slice::from_raw_parts(self.mods_addr as *const _, self.mods_len as usize)
         })

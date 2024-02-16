@@ -31,13 +31,16 @@ impl BumpMemory {
         let alingment = align_of::<T>();
         let size = size_of::<T>();
 
-        let alignment_offset =
-            ((self.start.as_usize() + alingment - 1) & !(alingment - 1)) - self.start.as_usize();
+        let alignment_offset = self.start.as_usize() % alingment;
 
-        let aligned_size = size + alignment_offset;
-        let block = self.alloc(aligned_size);
+        if alignment_offset > 0 {
+            self.start += alingment - alignment_offset;
+        }
 
-        let aligned_block = &mut block[alignment_offset..aligned_size];
+        let aligned_block = self.alloc(size);
+
+        debug_assert_eq!(aligned_block.len(), size);
+        debug_assert_eq!(aligned_block.as_ptr() as usize % alingment, 0);
 
         unsafe { &mut *(aligned_block.as_mut_ptr() as *mut MaybeUninit<T>) }
     }

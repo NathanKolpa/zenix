@@ -10,10 +10,13 @@ mod multiboot;
 mod paging;
 mod vga;
 
-use core::arch::{asm, global_asm};
-use core::fmt::Write;
+use core::{
+    arch::{asm, global_asm},
+    u64, u8,
+};
 
 use bootinfo::BootInfo;
+use elf::{ElfReadError, ElfReader, ObjectKind};
 use essentials::address::VirtualAddress;
 use x86_64::device::uart_16550::Uart16550;
 
@@ -71,16 +74,11 @@ pub extern "C" fn main(multiboot_magic_arg: u32, multiboot_info_addr: u32) {
         return;
     }
 
-    let info_ptr = multiboot_info_addr as *const MultibootInfo;
-    let info = unsafe { &*info_ptr };
+    let info_ptr = multiboot_info_addr as *mut MultibootInfo;
+    let info = unsafe { &mut *info_ptr };
 
-    let Some(mods) = info.mods() else {
+    let Some(kernel_module) = info.take_first_mod() else {
         vga::set_fail_msg("No modules loaded. Have you configured your bootloader correctly?");
-        return;
-    };
-
-    let Some(kernel_module) = mods.first() else {
-        vga::set_fail_msg("Expected at least one module, none provided");
         return;
     };
 
@@ -96,10 +94,40 @@ pub extern "C" fn main(multiboot_magic_arg: u32, multiboot_info_addr: u32) {
         )
     };
 
-    unsafe {
-        let l4_page_table = setup_paging(&mut bump_memory, mmap, kernel_module);
-        let gdt_table = setup_gdt_table(&mut bump_memory);
+    let (l4_page_table, entry_point) = match setup_paging(&mut bump_memory, mmap, kernel_module) {
+        Ok(t) => t,
+        Err(e) => {
+            vga::set_fail_msg(e.as_str());
+            return;
+        }
+    };
 
+    let gdt_table = setup_gdt_table(&mut bump_memory);
+
+    unsafe {
         enter_long_mode(l4_page_table, &gdt_table);
     }
+
+    vga::set_success_msg();
+
+    unsafe { call_kernel_main(entry_point) };
+
+    vga::set_fail_msg("Unexpectedly returned from kernel_main");
+}
+
+#[no_mangle]
+#[inline(never)]
+unsafe fn call_kernel_main(entry: u64) {
+    asm!(
+    "and esp, 0xffffff00",
+    "push 0",
+    "push {entry_point:e}",
+    entry_point = in(reg) entry as u32
+    );
+    asm!("ljmp $0x8, $2f", "2:", options(att_syntax));
+    asm!(
+        ".code64",
+        "call rax",
+        in("rax") entry as u32
+    )
 }

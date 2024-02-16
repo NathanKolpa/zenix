@@ -4,7 +4,7 @@ SECTIONS {
 	. = 1M;
 	BUMP_MEMORY_START = .;
 
-	. = 2M;
+	. = 3M;
 	BUMP_MEMORY_END = .;
 
 
@@ -12,7 +12,7 @@ SECTIONS {
 	. = . + 4K;
 
 	STACK_START = .;
-	. = . + 64K;
+	. = . + 67K;
 	STACK_END = .;
 
 	. = . + 4K;

@@ -73,7 +73,9 @@ pub fn long_mode_supported() -> bool {
 #[inline(never)]
 pub unsafe fn enter_long_mode(l4_page_table: u32, gdt_table: &InitialGdt) {
     const PAE_FLAG: u32 = 1 << 5;
+
     const EFER_MSR: u32 = 0xC0000080;
+
     const PG_BIT: u32 = 1 << 31;
 
     const LM_BIT: u32 = 1 << 8;

@@ -39,9 +39,9 @@ fn panic(info: &PanicInfo) -> ! {
 /// The kernel entry point.
 #[no_mangle]
 extern "C" fn kernel_main(boot_info: &'static mut BootInfo) -> ! {
-    unsafe {
-        init::init(boot_info);
-    }
+    //    unsafe {
+    //        init::init(boot_info);
+    //    }
 
     #[cfg(test)]
     test_main();

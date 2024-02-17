@@ -15,10 +15,7 @@ use core::{
     u64, u8,
 };
 
-use bootinfo::BootInfo;
-use elf::{ElfReadError, ElfReader, ObjectKind};
 use essentials::address::VirtualAddress;
-use x86_64::device::uart_16550::Uart16550;
 
 use crate::{
     bump_memory::BumpMemory, gdt::setup_gdt_table, long_mode::*, multiboot::MultibootInfo,
@@ -118,6 +115,7 @@ pub extern "C" fn main(multiboot_magic_arg: u32, multiboot_info_addr: u32) {
 #[no_mangle]
 #[inline(never)]
 unsafe fn call_kernel_main(entry: u64) {
+    // todo: reset the stack to the top
     asm!(
     "and esp, 0xffffff00",
     "push 0",

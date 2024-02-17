@@ -39,6 +39,7 @@ fn panic(info: &PanicInfo) -> ! {
 /// The kernel entry point.
 #[no_mangle]
 extern "C" fn kernel_main(boot_info: &'static mut BootInfo) -> ! {
+    debug_println!("Hello World");
     //    unsafe {
     //        init::init(boot_info);
     //    }

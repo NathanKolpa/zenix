@@ -1,8 +1,6 @@
 use core::{i64, u64, u8, usize};
 
-use elf::{
-    ElfHeaderReader, ElfReadError, ElfReader, RelocationEntryKind, SectionKind, SegmentData,
-};
+use elf::{ElfReadError, ElfReader, RelocationEntryKind, SectionKind};
 use essentials::FixedVec;
 use x86_64::paging::{PageSize, PageTable, PageTableEntry, PageTableEntryFlags};
 
@@ -169,10 +167,6 @@ fn map_kernel(
 
     let relo_table = kernel_elf.relocation_table()?;
 
-    let mut serial = unsafe { x86_64::device::uart_16550::Uart16550::new_and_init(0x3F8) };
-    use core::fmt::Write;
-    writeln!(&mut serial, "{relo_table:#x?}");
-
     for program_header in kernel_elf.program_headers()? {
         let virt_addr = program_header.addr();
         let mem_len = program_header.memory_size();
@@ -199,10 +193,9 @@ fn map_kernel(
         let no_exec = false; // !flags.executable();
         let writable = flags.writable();
 
-        writeln!(&mut serial, "{virt_addr:x} {phys_offset} ",);
-
         // parts that can be mapped the raw elf module.
         let file_len = program_header.file_size();
+
         map_phys_range(
             bump_memory,
             l4_table,
@@ -264,7 +257,6 @@ fn map_kernel(
             continue;
         }
 
-        writeln!(&mut serial, "sec");
         let header_addr = program_header.addr();
 
         let relo_entries = relo_table
@@ -286,14 +278,6 @@ fn map_kernel(
             }
 
             let index = entry.offset() - program_header.addr() + program_header.data_offset();
-
-            writeln!(
-                &mut serial,
-                "RELO {} {:x}",
-                entry.offset() - program_header.addr(),
-                entry.addend()
-            );
-
             relo_table_copy.push((entry.addend(), index));
         }
     }
@@ -320,8 +304,10 @@ fn map_phys_range(
     mut start: u64,
     mut len: u64,
 ) -> (u64, u64) {
+    let unaligned_start = start;
     start = align_down(start);
-    len = align_up(len);
+
+    len = align_up(len + (unaligned_start - start));
 
     let level_page_size = match level {
         2 => Some(PageSize::Size1Gib),
@@ -336,7 +322,6 @@ fn map_phys_range(
         .set_present(true)
         .set_writable(writable);
 
-    // map the memory backing to the page table.
     while len >= PAGE_SIZE {
         let addr = align_down((start as i64 + offset) as u64);
 
@@ -351,11 +336,12 @@ fn map_phys_range(
                 let existing_flags = parent[index as usize].flags();
                 let mut merged_flags = flags.set_huge(level > 0);
 
+                let phys_addr = (start as i64 + phys_offset) as u64;
+
                 if existing_flags.present() {
                     merged_flags = merged_flags | existing_flags;
                 }
 
-                let phys_addr = (start as i64 + phys_offset) as u64;
                 let entry = PageTableEntry::new_u64_addr(merged_flags, phys_addr);
 
                 parent[index as usize] = entry;

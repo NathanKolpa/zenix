@@ -190,7 +190,7 @@ fn map_kernel(
             continue;
         }
 
-        let no_exec = false; // !flags.executable();
+        let no_exec = !flags.executable();
         let writable = flags.writable();
 
         // parts that can be mapped the raw elf module.
@@ -338,8 +338,12 @@ fn map_phys_range(
 
                 let phys_addr = (start as i64 + phys_offset) as u64;
 
-                if existing_flags.present() {
-                    merged_flags = merged_flags | existing_flags;
+                if !existing_flags.noexec() || !no_exec {
+                    merged_flags = merged_flags.set_no_exec(false);
+                }
+
+                if existing_flags.writable() || writable {
+                    merged_flags = merged_flags.set_writable(true);
                 }
 
                 let entry = PageTableEntry::new_u64_addr(merged_flags, phys_addr);
@@ -373,11 +377,11 @@ fn map_phys_range(
                     panic!("Tried to decent into huge page");
                 }
 
-                if !no_exec && existing_flags.noexec() {
+                if !no_exec || !existing_flags.noexec() {
                     existing_flags = existing_flags.set_no_exec(false);
                 }
 
-                if writable && !existing_flags.writable() {
+                if writable || existing_flags.writable() {
                     existing_flags = existing_flags.set_writable(true);
                 }
 

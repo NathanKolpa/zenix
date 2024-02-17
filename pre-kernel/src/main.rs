@@ -115,12 +115,19 @@ pub extern "C" fn main(multiboot_magic_arg: u32, multiboot_info_addr: u32) {
 #[no_mangle]
 #[inline(never)]
 unsafe fn call_kernel_main(entry: u64) {
-    // todo: reset the stack to the top
+    extern "C" {
+        static STACK_END: u8;
+    }
+
+    let stack_end = unsafe { &STACK_END as *const _ as u32 };
+
     asm!(
-    "and esp, 0xffffff00",
-    "push 0",
-    "push {entry_point:e}",
-    entry_point = in(reg) entry as u32
+        "mov esp, {stack_end:e}",
+        "mov ebp, esp",
+        "push 0",
+        "push {entry_point:e}",
+        entry_point = in(reg) entry as u32,
+        stack_end = in(reg) stack_end
     );
     asm!("ljmp $0x8, $2f", "2:", options(att_syntax));
     asm!(

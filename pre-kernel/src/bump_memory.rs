@@ -1,15 +1,30 @@
 use core::mem::{align_of, size_of, MaybeUninit};
 
+use bootinfo::MemoryRegion;
 use essentials::address::VirtualAddress;
 
+use crate::regions::{BUMP_MEMORY_END, BUMP_MEMORY_START};
+
 pub struct BumpMemory {
+    initial_start: VirtualAddress,
     start: VirtualAddress,
     end: VirtualAddress,
 }
 
 impl BumpMemory {
     pub unsafe fn new(start: VirtualAddress, end: VirtualAddress) -> Self {
-        Self { start, end }
+        Self {
+            initial_start: start,
+            start,
+            end,
+        }
+    }
+
+    pub unsafe fn new_from_linker() -> Self {
+        Self::new(
+            VirtualAddress::from(&BUMP_MEMORY_START as *const _),
+            VirtualAddress::from(&BUMP_MEMORY_END as *const _),
+        )
     }
 
     fn move_start_to_new_pos(&mut self, size: usize) -> VirtualAddress {
@@ -43,5 +58,19 @@ impl BumpMemory {
         debug_assert_eq!(aligned_block.as_ptr() as usize % alingment, 0);
 
         unsafe { &mut *(aligned_block.as_mut_ptr() as *mut MaybeUninit<T>) }
+    }
+
+    pub fn left_over_memory(&self) -> MemoryRegion {
+        MemoryRegion {
+            start: self.start.as_u64(),
+            size: (self.end - self.start).as_u64(),
+        }
+    }
+
+    pub fn used_memory(&self) -> MemoryRegion {
+        MemoryRegion {
+            start: self.initial_start.as_u64(),
+            size: (self.start - self.initial_start).as_u64(),
+        }
     }
 }

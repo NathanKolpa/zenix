@@ -1,6 +1,6 @@
 use core::usize;
 
-use bootloader_api::BootInfo;
+use bootinfo::BootInfo;
 use essentials::address::VirtualAddress;
 
 use crate::memory::{
@@ -23,11 +23,7 @@ pub unsafe fn init(boot_info: &'static BootInfo) {
     debug_println!("Debug channel: {}", debug::DEBUG_CHANNEL);
     debug_println!("{}", MemoryInfo::from_boot_info(boot_info));
 
-    let phys_mem_offset = boot_info
-        .physical_memory_offset
-        .into_option()
-        .expect("physical memory offset is passed by the bootloader")
-        as usize;
+    let phys_mem_offset = boot_info.physical_memory_offset as usize;
 
     // Initializing the heap is also very important to do first.
     // Even the frame allocator uses the heap!
@@ -37,7 +33,7 @@ pub unsafe fn init(boot_info: &'static BootInfo) {
         &essentials::display::ReadableSize::new(kernel_size)
     );
 
-    FRAME_ALLOC.init_with(&boot_info.memory_regions, phys_mem_offset);
+    FRAME_ALLOC.init_with(boot_info.usable_memory, phys_mem_offset);
 
     let mut root_mapper = MemoryMapper::from_active_page(phys_mem_offset);
     root_mapper.share_all();

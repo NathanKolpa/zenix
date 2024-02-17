@@ -1,5 +1,6 @@
 use core::{i64, u64, u8, usize};
 
+use bootinfo::MemoryRegion;
 use elf::{ElfReadError, ElfReader, RelocationEntryKind, SectionKind};
 use essentials::FixedVec;
 use x86_64::paging::{PageSize, PageTable, PageTableEntry, PageTableEntryFlags};
@@ -7,6 +8,7 @@ use x86_64::paging::{PageSize, PageTable, PageTableEntry, PageTableEntryFlags};
 use crate::{
     bump_memory::BumpMemory,
     multiboot::{MultibootMMapEntry, MultibootModule},
+    regions::{known_regions, KnownRegion},
     vga::{VGA_ADDR, VGA_LEN},
 };
 
@@ -91,31 +93,22 @@ pub fn setup_paging<'a>(
 
     for mm_entry in memory_map.filter(|e| e.is_usable()) {
         let addr = mm_entry.addr();
-        let len = mm_entry.len();
+        let len = mm_entry.size();
 
         map(PHYS_MEM_OFFSET, true, true, addr, len);
     }
 
-    // static mappings
-    let pre_start = unsafe { &PRE_KERNEL_START as *const _ as u64 };
-    let pre_end = unsafe { &PRE_KERNEL_END as *const _ as u64 };
-    let pre_len = pre_end - pre_start;
+    let known_regions = known_regions();
 
-    let bump_start = unsafe { &BUMP_MEMORY_START as *const _ as u64 };
-    let bump_end = unsafe { &BUMP_MEMORY_END as *const _ as u64 };
-    let bump_len = bump_end - bump_start;
-
-    let stack_start = unsafe { &STACK_START as *const _ as u64 };
-    let stack_end = unsafe { &STACK_END as *const _ as u64 };
-    let stack_len = stack_end - stack_start;
-
-    let vga_start = VGA_ADDR.as_u64();
-    let vga_len = VGA_LEN as u64;
-
-    map(0, true, true, bump_start, bump_len);
-    map(0, true, true, stack_start, stack_len);
-    map(0, false, false, pre_start, pre_len);
-    map(0, true, true, vga_start, vga_len);
+    for region in known_regions {
+        map(
+            0,
+            !region.executable,
+            region.writable,
+            region.start,
+            region.size,
+        );
+    }
 
     // kernel mappings
     let elf_start = kernel_module.addr() as u64;
@@ -125,21 +118,13 @@ pub fn setup_paging<'a>(
         return Err(PagingSetupError::ElfNotAligned);
     }
 
-    let protected_regions = [
-        (pre_start, pre_end),
-        (bump_start, bump_end),
-        (stack_start - PAGE_SIZE, stack_end + PAGE_SIZE),
-        (elf_start, elf_end),
-    ];
-
-    let entry_point = map_kernel(bump_memory, &protected_regions, kernel_module, l4_table)?;
+    let entry_point = map_kernel(bump_memory, kernel_module, l4_table)?;
 
     Ok((l4_table as *const _ as u32, entry_point))
 }
 
 fn map_kernel(
     bump_memory: &mut BumpMemory,
-    protected_regions: &[(u64, u64)],
     kernel_module: &mut MultibootModule,
     l4_table: &mut PageTable,
 ) -> Result<u64, PagingSetupError> {
@@ -174,8 +159,8 @@ fn map_kernel(
 
         let phys_offset = elf_start as i64 + program_header.data_offset() as i64 - virt_addr as i64;
 
-        for (region_start, region_end) in protected_regions {
-            if virt_end >= *region_start && virt_addr <= *region_end {
+        for region in known_regions() {
+            if virt_end >= region.start && virt_addr <= region.start + region.size {
                 return Err(PagingSetupError::OverlappingKernel);
             }
         }
@@ -425,10 +410,10 @@ fn new_empty_page_table(bump_memory: &mut BumpMemory) -> &'static mut PageTable 
     table
 }
 
-fn align_up(addr: u64) -> u64 {
+pub fn align_up(addr: u64) -> u64 {
     (addr + PAGE_SIZE - 1) & !(PAGE_SIZE - 1)
 }
 
-fn align_down(addr: u64) -> u64 {
+pub fn align_down(addr: u64) -> u64 {
     addr & !(PAGE_SIZE - 1)
 }

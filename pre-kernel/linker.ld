@@ -2,20 +2,17 @@ ENTRY(_start)
 
 SECTIONS {
 	. = 1M;
+
+	STACK_START = .;
+	. = . + 64K;
+	STACK_END = .;
+
+	. = . + 4;
+
 	BUMP_MEMORY_START = .;
 
 	. = 3M;
 	BUMP_MEMORY_END = .;
-
-
-	/* allow a stack canary to be mapped */
-	. = . + 4K;
-
-	STACK_START = .;
-	. = . + 67K;
-	STACK_END = .;
-
-	. = . + 4K;
 
 	PRE_KERNEL_START = .;
 	.text ALIGN(0x10) : {
@@ -48,8 +45,6 @@ SECTIONS {
 		*(.debug_line .debug_line.*)
 	}
 
-	. = ALIGN(4K);
 	PRE_KERNEL_END = .;
-
-
+	
 }

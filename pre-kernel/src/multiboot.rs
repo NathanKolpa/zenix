@@ -1,5 +1,9 @@
 use core::{mem::size_of, u32};
 
+use bootinfo::MemoryRegion;
+
+pub const MULTIBOOT_MAGIC: u32 = 0x2BADB002;
+
 #[repr(C)]
 pub struct MultibootModule {
     start: u32,
@@ -24,13 +28,21 @@ impl MultibootModule {
     pub fn bytes_mut(&mut self) -> &mut [u8] {
         unsafe { core::slice::from_raw_parts_mut(self.addr() as *mut _, self.len() as usize) }
     }
+
+    pub fn as_info_region(&self) -> MemoryRegion {
+        MemoryRegion {
+            start: self.start as u64,
+            size: (self.end - self.start) as u64,
+        }
+    }
 }
 
 #[repr(C)]
+#[derive(Debug)]
 pub struct MultibootMMapEntry {
     entry_size: u32,
     addr: u64,
-    len: u64,
+    size: u64,
     kind: u32,
 }
 
@@ -39,8 +51,8 @@ impl MultibootMMapEntry {
         self.addr
     }
 
-    pub fn len(&self) -> u64 {
-        self.len
+    pub fn size(&self) -> u64 {
+        self.size
     }
 
     pub fn kind(&self) -> u32 {
@@ -116,7 +128,7 @@ impl MultibootInfo {
         core::str::from_utf8(buff).ok()
     }
 
-    pub fn mmap(&self) -> Option<impl Iterator<Item = &MultibootMMapEntry> + '_ + Clone> {
+    pub fn mmap(&self) -> Option<impl Iterator<Item = &MultibootMMapEntry> + '_ + Copy> {
         if self.flags & (1 << 6) == 0 {
             return None;
         }
@@ -150,7 +162,7 @@ impl MultibootInfo {
     }
 }
 
-#[derive(Clone)]
+#[derive(Clone, Copy)]
 struct MemoryMapIter<'a> {
     addr: *const MultibootMMapEntry,
     info: &'a MultibootInfo,

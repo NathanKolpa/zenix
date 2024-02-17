@@ -19,7 +19,7 @@ header_end:
 _start:
 
 	// setup the stack
-	mov esp, 0x311000 // 3M + 67K + 4K
+	mov esp, 1114112 // 3M + 67K + 4K
 	mov ebp, esp
 
 	// push arg 1 for main

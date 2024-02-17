@@ -30,8 +30,7 @@
 
 use alloc::vec::Vec;
 
-use bootloader_api::info::{MemoryRegionKind, MemoryRegions};
-
+use bootinfo::MemoryRegion;
 use zone::Zone;
 
 #[allow(unused_imports)] // Used the module's doc.
@@ -101,12 +100,17 @@ impl FrameAllocator {
     /// # Safety
     ///
     /// The `map` and `physical_memory_offset` are assumed to be valid for the machine.
-    pub unsafe fn init_with(&self, map: &MemoryRegions, physical_memory_offset: usize) {
+    pub unsafe fn init_with(&self, map: &[MemoryRegion], physical_memory_offset: usize) {
         let usable_regions = map
-            .iter()
-            .filter(|x| x.kind == MemoryRegionKind::Usable)
-            .filter(|x| (x.end - x.start) >= 2u64.pow(MIN_ORDER as u32))
-            .map(|r| Zone::new((r.start).into(), (r.end).into(), physical_memory_offset));
+            .iter() // TODO: align the end & start.
+            .filter(|x| x.size >= 2u64.pow(MIN_ORDER as u32))
+            .map(|r| {
+                Zone::new(
+                    (r.start).into(),
+                    (r.size + r.start).into(),
+                    physical_memory_offset,
+                )
+            });
 
         let mut zones: Vec<_> = usable_regions.collect();
 

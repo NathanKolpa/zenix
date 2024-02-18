@@ -1,35 +1,12 @@
-use std::{
-    env,
-    fmt::Debug,
-    process::{Command, Stdio},
-};
+use std::process::{Command, Stdio};
 
-pub enum CliError {
-    UnexpectedArg(String),
+#[derive(Debug, Default)]
+pub struct RunnerOptions {
+    pub gdb: bool,
+    pub verbose: bool,
 }
 
-impl Debug for CliError {
-    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
-        match self {
-            CliError::UnexpectedArg(got) => write!(f, "unexpected argument \"{got}\""),
-        }
-    }
-}
-
-fn main() -> Result<(), CliError> {
-    let mut verbose = false;
-    let mut gdb = false;
-
-    for arg in env::args().skip(1) {
-        match arg.as_str() {
-            "--verbose" | "-v" => verbose = true,
-            "--gdb" | "-d" => gdb = true,
-            _ => {
-                return Err(CliError::UnexpectedArg(arg));
-            }
-        }
-    }
-
+pub fn run(opts: &RunnerOptions) {
     let kernel_path = env!("KERNEL_PATH");
     let pre_kernel_path = env!("PRE_KERNEL_PATH");
     let mut cmd = Command::new("qemu-system-x86_64");
@@ -57,7 +34,7 @@ fn main() -> Result<(), CliError> {
     cmd.arg("-d");
     cmd.arg("unimp");
 
-    if verbose {
+    if opts.verbose {
         cmd.arg("-d");
         cmd.arg("int");
     }
@@ -65,7 +42,7 @@ fn main() -> Result<(), CliError> {
     cmd.arg("-no-reboot");
     cmd.arg("-no-shutdown");
 
-    if gdb {
+    if opts.gdb {
         cmd.arg("-gdb");
         cmd.arg("tcp::1234");
         cmd.arg("-S");
@@ -102,6 +79,4 @@ fn main() -> Result<(), CliError> {
 
     qemu_proc.wait().unwrap();
     debugger_proc.and_then(|mut proc| proc.wait().ok());
-
-    Ok(())
 }

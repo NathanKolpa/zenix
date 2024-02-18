@@ -10,9 +10,14 @@ license.workspace = true
 version = "0.1.0"
 license = "GLPv2"
 
+
+[lib]
+name = "runner_common"
+path = "meta/lib.rs"
+
 [[bin]]
-name = "zenix"
-path = "meta/qemu.rs"
+name = "runner"
+path = "meta/runner.rs"
 
 [build-dependencies]
 kernel = { path = "kernel", artifact = "bin", target = "x86_64-unknown-none" }

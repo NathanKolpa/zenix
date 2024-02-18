@@ -1,5 +1,7 @@
 #![no_std]
 
+use core::u64;
+
 #[repr(C)]
 #[derive(Clone, Copy, Debug)]
 pub struct MemoryRegion {
@@ -9,7 +11,7 @@ pub struct MemoryRegion {
 
 #[repr(C)]
 #[derive(Clone, Debug)]
-pub struct BootInfo<'a> {
+pub struct BootInfoData {
     pub physical_memory_offset: u64,
 
     pub stack_size: u64,
@@ -18,8 +20,80 @@ pub struct BootInfo<'a> {
     pub bump_memory: MemoryRegion,
 
     pub usable_heap: MemoryRegion,
-    pub usable_memory: &'a [MemoryRegion],
 
-    pub kernel_arguments: Option<&'a str>,
-    pub bootloader_name: Option<&'a str>,
+    pub usable_memory_addr: u64,
+    pub usable_memory_len: u64,
+
+    pub kernel_arguments_addr: u64,
+    pub kernel_arguments_len: u64,
+
+    pub bootloader_name_addr: u64,
+    pub bootloader_name_len: u64,
+}
+
+pub struct BootInfo {
+    data: &'static BootInfoData,
+}
+
+impl BootInfo {
+    pub unsafe fn deref_ptr(info: *const BootInfoData) -> Self {
+        let data = &*info;
+
+        Self { data }
+    }
+
+    pub fn physycal_memory_offset(&self) -> usize {
+        self.data.physical_memory_offset as usize
+    }
+
+    pub fn usable_memory(&self) -> &'static [MemoryRegion] {
+        unsafe {
+            core::slice::from_raw_parts(
+                self.data.usable_memory_addr as *const _,
+                self.data.usable_memory_len as usize,
+            )
+        }
+    }
+
+    pub fn stack_size(&self) -> usize {
+        self.data.stack_size as usize
+    }
+
+    pub fn kernel_code(&self) -> MemoryRegion {
+        self.data.kernel_code
+    }
+
+    pub fn bump_memory(&self) -> MemoryRegion {
+        self.data.bump_memory
+    }
+
+    pub fn usable_heap(&self) -> MemoryRegion {
+        self.data.usable_heap
+    }
+
+    pub fn kernel_arguments(&self) -> Option<&'static str> {
+        if self.data.kernel_arguments_addr == 0 || self.data.kernel_arguments_len == 0 {
+            return None;
+        }
+
+        Some(unsafe {
+            core::str::from_utf8_unchecked(core::slice::from_raw_parts(
+                self.data.kernel_arguments_addr as *const _,
+                self.data.kernel_arguments_len as usize,
+            ))
+        })
+    }
+
+    pub fn bootloader_name(&self) -> Option<&'static str> {
+        if self.data.bootloader_name_addr == 0 || self.data.bootloader_name_len == 0 {
+            return None;
+        }
+
+        Some(unsafe {
+            core::str::from_utf8_unchecked(core::slice::from_raw_parts(
+                self.data.bootloader_name_addr as *const _,
+                self.data.bootloader_name_len as usize,
+            ))
+        })
+    }
 }

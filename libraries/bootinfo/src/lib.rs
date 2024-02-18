@@ -1,6 +1,6 @@
 #![no_std]
 
-use core::u64;
+use core::fmt::Debug;
 
 #[repr(C)]
 #[derive(Clone, Copy, Debug)]
@@ -38,7 +38,6 @@ pub struct BootInfo {
 impl BootInfo {
     pub unsafe fn deref_ptr(info: *const BootInfoData) -> Self {
         let data = &*info;
-
         Self { data }
     }
 
@@ -95,5 +94,18 @@ impl BootInfo {
                 self.data.bootloader_name_len as usize,
             ))
         })
+    }
+}
+
+impl Debug for BootInfo {
+    fn fmt(&self, f: &mut core::fmt::Formatter<'_>) -> core::fmt::Result {
+        f.debug_struct("BootInfo")
+            .field("physycal_memory_offset", &self.physycal_memory_offset())
+            .field("usable_memory", &self.usable_memory())
+            .field("usable_heap", &self.usable_heap())
+            .field("bump_memory", &self.bump_memory())
+            .field("kernel_arguments", &self.kernel_arguments())
+            .field("bootloader_name", &self.bootloader_name())
+            .finish()
     }
 }

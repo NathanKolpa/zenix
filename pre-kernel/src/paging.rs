@@ -1,5 +1,5 @@
 use elf::{ElfHeaderReader, ElfReadError, ElfReader, RelocationEntryKind, SectionKind};
-use x86_64::paging::{PageSize, PageTable, PageTableEntry, PageTableEntryFlags};
+use x86_64::paging::{cr3, PageSize, PageTable, PageTableEntry, PageTableEntryFlags};
 
 use crate::{
     bump_memory::BumpMemory,
@@ -158,7 +158,7 @@ fn map_sections<'a>(
             continue;
         }
 
-        let no_exec = !flags.executable();
+        let no_exec = false; // TODO: !flags.executable();
         let writable = flags.writable();
 
         let file_len = program_header.file_size();
@@ -317,12 +317,14 @@ fn map_phys_range(
                     panic!("Tried to map an unaligned page");
                 }
 
-                if !existing_flags.noexec() || !no_exec {
-                    merged_flags = merged_flags.set_no_exec(false);
-                }
+                if existing_flags.present() {
+                    if !existing_flags.noexec() || !no_exec {
+                        merged_flags = merged_flags.set_no_exec(false);
+                    }
 
-                if existing_flags.writable() || writable {
-                    merged_flags = merged_flags.set_writable(true);
+                    if existing_flags.writable() || writable {
+                        merged_flags = merged_flags.set_writable(true);
+                    }
                 }
 
                 let entry = PageTableEntry::new_u64_addr(merged_flags, phys_addr);

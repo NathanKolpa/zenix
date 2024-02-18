@@ -163,6 +163,11 @@ unsafe fn call_kernel_main(entry: u64, kernel_boot_info: u64) {
     asm!("ljmp $0x8, $2f", "2:", options(att_syntax));
     asm!(
         ".code64",
+
+        // refresh cr3
+        "mov rdi, cr3",
+        "mov cr3, rdi",
+
         "pop rdi",
         "pop rax",
         "call rax",

@@ -1,4 +1,4 @@
-use core::{mem::size_of, u32};
+use core::mem::size_of;
 
 use bootinfo::MemoryRegion;
 

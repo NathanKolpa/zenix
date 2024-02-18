@@ -1,7 +1,4 @@
-use core::{
-    mem::{align_of, size_of, MaybeUninit},
-    u8,
-};
+use core::mem::{align_of, size_of, MaybeUninit};
 
 use bootinfo::MemoryRegion;
 use essentials::address::VirtualAddress;

@@ -1,10 +1,5 @@
-use core::{i64, u64, u8, usize};
-
 use elf::{ElfHeaderReader, ElfReadError, ElfReader, RelocationEntryKind, SectionKind};
-use x86_64::{
-    device::uart_16550::Uart16550,
-    paging::{PageSize, PageTable, PageTableEntry, PageTableEntryFlags},
-};
+use x86_64::paging::{PageSize, PageTable, PageTableEntry, PageTableEntryFlags};
 
 use crate::{
     bump_memory::BumpMemory,
@@ -12,7 +7,7 @@ use crate::{
     regions::known_regions,
 };
 
-pub const PHYS_MEM_OFFSET: i64 = 250_0000_0000_0000;
+pub const PHYS_MEM_OFFSET: i64 = 1024 * 1024 * 1024 * 1024 * 60; // 60 TiB
 const PAGE_SIZE: u64 = 4096;
 
 extern "C" {
@@ -90,7 +85,6 @@ pub fn setup_paging<'a>(
     };
 
     // phys to virt mappings
-
     for mm_entry in memory_map.filter(|e| e.is_usable()) {
         let addr = mm_entry.addr();
         let len = mm_entry.size();
@@ -243,7 +237,13 @@ unsafe fn apply_relocations(kernel_elf: ElfHeaderReader<'_, u64>) -> Result<(), 
     Ok(())
 }
 
+// TODO
 fn unmap_module(kernel: &MultibootModule) -> Result<(), PagingSetupError> {
+    Ok(())
+}
+
+// TODO
+fn protect_relocations(kernel: &MultibootModule) -> Result<(), PagingSetupError> {
     Ok(())
 }
 
@@ -257,11 +257,12 @@ pub unsafe fn map_kernel(
 
     let kernel_elf = map_sections(bump_memory, l4_table, raw_kernel_elf)?;
 
-    let Some(entry_point) = kernel_elf.entry_point() else {
-        return Err(PagingSetupError::NoEntryPoint);
-    };
+    let entry_point = kernel_elf
+        .entry_point()
+        .ok_or(PagingSetupError::NoEntryPoint)?;
 
     apply_relocations(kernel_elf)?;
+    protect_relocations(kernel)?;
     unmap_module(kernel)?;
 
     Ok(entry_point)
@@ -325,7 +326,6 @@ fn map_phys_range(
                 }
 
                 let entry = PageTableEntry::new_u64_addr(merged_flags, phys_addr);
-
                 parent[index as usize] = entry;
 
                 start += level_page_size;

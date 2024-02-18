@@ -1,4 +1,4 @@
-use core::{ptr::null, u64};
+use core::ptr::null;
 
 use bootinfo::*;
 use essentials::FixedVec;

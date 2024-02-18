@@ -45,10 +45,5 @@ pub unsafe fn init(boot_info: &BootInfo) {
     let mut root_mapper = MemoryMapper::from_active_page(boot_info.physycal_memory_offset());
     root_mapper.share_all();
 
-    debug_println!(
-        "{}",
-        root_mapper.tree_display(0usize.into(), 1024 * 1024 * 10, None)
-    );
-
     debug_println!("Graceull exit");
 }

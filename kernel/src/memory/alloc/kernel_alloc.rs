@@ -1,5 +1,8 @@
-use core::alloc::{GlobalAlloc, Layout};
 use core::mem::{align_of, size_of};
+use core::{
+    alloc::{GlobalAlloc, Layout},
+    sync::atomic::{AtomicUsize, Ordering},
+};
 use core::{
     fmt::{Debug, Formatter},
     u8,
@@ -89,12 +92,14 @@ impl<'a> FreeNode<'a> {
 #[derive(Debug)]
 pub struct KernelAlloc<'a> {
     head: SpinLock<Option<&'a mut FreeNode<'a>>>,
+    total_size: AtomicUsize,
 }
 
 impl<'a> KernelAlloc<'a> {
     pub const fn new() -> Self {
         Self {
             head: SpinLock::new(None),
+            total_size: AtomicUsize::new(0),
         }
     }
 
@@ -118,7 +123,10 @@ impl<'a> KernelAlloc<'a> {
         let addr = backing.as_mut_ptr() as usize;
         let alignment_offset = addr % align_of::<FreeNode>();
 
-        unsafe { self.add_free_region(addr + alignment_offset, backing.len() - alignment_offset) }
+        let aligned_len = backing.len() - alignment_offset;
+        self.total_size.fetch_add(aligned_len, Ordering::Release);
+
+        unsafe { self.add_free_region(addr + alignment_offset, aligned_len) }
     }
 
     fn size_align(layout: Layout) -> Layout {
@@ -128,6 +136,10 @@ impl<'a> KernelAlloc<'a> {
             .pad_to_align();
         let size = layout.size().max(size_of::<FreeNode>());
         Layout::from_size_align(size, layout.align()).unwrap()
+    }
+
+    pub fn backing_size(&self) -> usize {
+        self.total_size.load(Ordering::Relaxed)
     }
 }
 
@@ -163,8 +175,8 @@ mod tests {
     use alloc::vec::Vec;
 
     #[test_case]
-    fn test_reuse_ptr() {
-        let mut backing = [MaybeUninit::uninit(); 64];
+    fn test_reuse_ptr_local() {
+        let mut backing = [0; 2000];
         let alloc = KernelAlloc::new();
         alloc.add_backing(&mut backing);
 
@@ -174,6 +186,17 @@ mod tests {
             let ptr = alloc.alloc(layout);
             alloc.dealloc(ptr, layout);
             assert_eq!(ptr, alloc.alloc(layout));
+        };
+    }
+
+    #[test_case]
+    fn test_reuse_ptr() {
+        let layout = Layout::new::<u64>();
+
+        unsafe {
+            let ptr = KERNEL_ALLOC.alloc(layout);
+            KERNEL_ALLOC.dealloc(ptr, layout);
+            assert_eq!(ptr, KERNEL_ALLOC.alloc(layout));
         };
     }
 
@@ -188,7 +211,7 @@ mod tests {
 
     #[test_case]
     fn test_reuse_more_then_the_entire_heap() {
-        for i in 0..INITIAL_HEAP_SIZE {
+        for i in 0..KERNEL_ALLOC.backing_size() {
             let value = Box::new(i);
             assert_eq!(*value, i);
         }

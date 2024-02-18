@@ -1,32 +1,14 @@
-use core::fmt::{Debug, Formatter};
-use core::mem::{align_of, size_of, MaybeUninit};
+use core::alloc::{GlobalAlloc, Layout};
+use core::mem::{align_of, size_of};
 use core::{
-    alloc::{GlobalAlloc, Layout},
-    ptr::addr_of_mut,
+    fmt::{Debug, Formatter},
+    u8,
 };
 
-use essentials::{address::VirtualAddress, spin::SpinLock, StaticPtr};
-
-pub const INITIAL_HEAP_SIZE: usize = 1024 * 1024;
-const HEAP_ARRAY_SIZE: usize = INITIAL_HEAP_SIZE / 8;
-static mut BACKING: [MaybeUninit<u64>; HEAP_ARRAY_SIZE] = [MaybeUninit::uninit(); HEAP_ARRAY_SIZE]; // we must align the backing with the FreeNode hence, MaybeUninit<u64>
-static BACKING_REF: StaticPtr<[MaybeUninit<u64>; HEAP_ARRAY_SIZE]> =
-    unsafe { StaticPtr::new(addr_of_mut!(BACKING)) };
+use essentials::{address::VirtualAddress, spin::SpinLock};
 
 #[global_allocator]
 pub static KERNEL_ALLOC: KernelAlloc = KernelAlloc::new();
-
-/// Add backing to the kernel heap.
-///
-/// Calling this function more than once will not do anything.
-pub fn init_heap() -> usize {
-    if let Some(backing_ref) = BACKING_REF.take() {
-        KERNEL_ALLOC.add_backing(backing_ref);
-        INITIAL_HEAP_SIZE
-    } else {
-        0
-    }
-}
 
 struct FreeNode<'a> {
     size: usize,
@@ -130,16 +112,13 @@ impl<'a> KernelAlloc<'a> {
         *current_head = Some(head);
     }
 
-    pub fn add_backing(&self, backing: &'a mut [MaybeUninit<u64>]) {
+    pub fn add_backing(&self, backing: &'a mut [u8]) {
         assert!(backing.len() >= size_of::<FreeNode>());
 
         let addr = backing.as_mut_ptr() as usize;
-        assert_eq!(
-            VirtualAddress::align_ptr_up(addr, align_of::<FreeNode>()),
-            addr
-        );
+        let alignment_offset = addr % align_of::<FreeNode>();
 
-        unsafe { self.add_free_region(addr, core::mem::size_of_val(backing)) }
+        unsafe { self.add_free_region(addr + alignment_offset, backing.len() - alignment_offset) }
     }
 
     fn size_align(layout: Layout) -> Layout {

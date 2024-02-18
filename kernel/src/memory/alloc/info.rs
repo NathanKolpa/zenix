@@ -1,4 +1,3 @@
-use crate::memory::alloc::kernel_alloc::INITIAL_HEAP_SIZE;
 use bootinfo::BootInfo;
 use core::{
     fmt::{Display, Formatter},
@@ -17,17 +16,17 @@ pub struct MemoryInfo {
 impl MemoryInfo {
     pub fn from_boot_info(boot_info: &BootInfo) -> Self {
         let total_allocatable_bytes = boot_info
-            .usable_memory
+            .usable_memory()
             .iter()
             .map(|x| x.size as usize)
             .sum();
 
         MemoryInfo {
             usable: total_allocatable_bytes,
-            bump: boot_info.bump_memory.size as usize,
-            kernel_code: boot_info.kernel_code.size as usize,
-            kernel_heap: INITIAL_HEAP_SIZE,
-            kernel_stack: boot_info.stack_size as usize,
+            bump: boot_info.bump_memory().size as usize,
+            kernel_code: boot_info.kernel_code().size as usize,
+            kernel_heap: boot_info.usable_heap().size as usize,
+            kernel_stack: boot_info.stack_size(),
         }
     }
 }
@@ -39,7 +38,7 @@ impl Display for MemoryInfo {
 
         writeln!(f, "Memory info:")?;
         writeln!(f, "\ttotal:        {}", ReadableSize::new(total))?;
-        writeln!(f, "\tbootloader:   {}", ReadableSize::new(self.bump))?;
+        writeln!(f, "\treserved:     {}", ReadableSize::new(self.bump))?;
         writeln!(f, "\tkernel code:  {}", ReadableSize::new(self.kernel_code))?;
         writeln!(f, "\tkernel heap:  {}", ReadableSize::new(self.kernel_heap))?;
         writeln!(f, "\tkernel stack: {}", ReadableSize::new(self.kernel_stack))?;

@@ -20,7 +20,7 @@ pub mod testing;
 
 use core::panic::PanicInfo;
 
-use bootinfo::BootInfo;
+use bootinfo::{BootInfo, BootInfoData};
 
 /// The kernel panic handler.
 #[cfg(not(test))]
@@ -39,17 +39,12 @@ fn panic(info: &PanicInfo) -> ! {
 
 /// The kernel entry point.
 #[no_mangle]
-extern "C" fn kernel_main(boot_info_ptr: *const BootInfo) -> ! {
-    let boot_info = unsafe { &*boot_info_ptr };
+extern "C" fn kernel_main(boot_info_ptr: *const BootInfoData) -> ! {
+    let boot_info = unsafe { BootInfo::deref_ptr(boot_info_ptr) };
 
-    debug_println!("Hello World");
-    debug_println!("Hello World {:?}", boot_info.bump_memory);
-    debug_println!("Hello World {:?}", boot_info.usable_heap);
-    debug_println!("Hello World {:?}", boot_info.stack_size);
-    debug_println!("Hello World {:?}", boot_info.kernel_code);
-    //    unsafe {
-    //        init::init(boot_info);
-    //    }
+    unsafe {
+        init::init(&boot_info);
+    }
 
     #[cfg(test)]
     test_main();

@@ -10,28 +10,60 @@ use crate::{
     regions::{known_regions, stack_size},
 };
 
+pub fn finalize_boot_info(bump_memory: BumpMemory, kernel_boot_info: &mut BootInfoData) {
+    kernel_boot_info.bump_memory = bump_memory.used_memory();
+    kernel_boot_info.usable_heap = bump_memory.left_over_memory();
+}
+
 pub fn setup_boot_info<'a>(
-    mut bump_memory: BumpMemory,
+    mut bump_memory: &mut BumpMemory,
     mmap: impl Iterator<Item = &'a MultibootMMapEntry> + Copy,
     kernel_module_region: MemoryRegion,
     multiboot_info: &'static MultibootInfo,
-) -> u64 {
+) -> &'static mut BootInfoData {
     let usable_memory = setup_mmap_info(&mut bump_memory, mmap, kernel_module_region);
 
-    let boot_info = bump_memory.alloc_struct::<BootInfo>();
+    let boot_info = bump_memory.alloc_struct::<BootInfoData>();
 
-    boot_info.write(BootInfo {
+    let (kernel_arguments_addr, kernel_arguments_len) =
+        setup_str(bump_memory, multiboot_info.cmdline());
+
+    let (bootloader_name_addr, bootloader_name_len) =
+        setup_str(bump_memory, multiboot_info.boot_loader_name());
+
+    let null_region = MemoryRegion { start: 0, size: 0 };
+
+    boot_info.write(BootInfoData {
         physical_memory_offset: PHYS_MEM_OFFSET as u64,
         stack_size: stack_size(),
-        usable_heap: bump_memory.left_over_memory(), // TODO: add pre kernel to this.
-        usable_memory,
-        kernel_arguments: multiboot_info.cmdline(),
-        bootloader_name: multiboot_info.boot_loader_name(),
+        usable_heap: null_region, // TODO: add pre kernel to this.
+        usable_memory_addr: usable_memory.as_ptr() as u64,
+        usable_memory_len: usable_memory.len() as u64,
         kernel_code: kernel_module_region,
-        bump_memory: bump_memory.used_memory(),
-    });
+        bump_memory: null_region,
+        kernel_arguments_addr,
+        kernel_arguments_len,
+        bootloader_name_addr,
+        bootloader_name_len,
+    })
+}
 
-    boot_info.as_ptr() as u64
+fn setup_str(bump_memory: &mut BumpMemory, input: Option<&'static str>) -> (u64, u64) {
+    let Some(input) = input else {
+        return (0, 0);
+    };
+
+    if input.is_empty() {
+        return (0, 0);
+    }
+
+    let str_alloc = bump_memory.alloc(input.len());
+    str_alloc.copy_from_slice(input.as_bytes());
+
+    (
+        str_alloc.as_ptr() as *const _ as u64,
+        str_alloc.len() as u64,
+    )
 }
 
 fn setup_mmap_info<'a>(

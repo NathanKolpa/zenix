@@ -1,15 +1,15 @@
 use core::{i64, u64, u8, usize};
 
-use bootinfo::MemoryRegion;
-use elf::{ElfReadError, ElfReader, RelocationEntryKind, SectionKind};
-use essentials::FixedVec;
-use x86_64::paging::{PageSize, PageTable, PageTableEntry, PageTableEntryFlags};
+use elf::{ElfHeaderReader, ElfReadError, ElfReader, RelocationEntryKind, SectionKind};
+use x86_64::{
+    device::uart_16550::Uart16550,
+    paging::{PageSize, PageTable, PageTableEntry, PageTableEntryFlags},
+};
 
 use crate::{
     bump_memory::BumpMemory,
     multiboot::{MultibootMMapEntry, MultibootModule},
-    regions::{known_regions, KnownRegion},
-    vga::{VGA_ADDR, VGA_LEN},
+    regions::known_regions,
 };
 
 pub const PHYS_MEM_OFFSET: i64 = 250_0000_0000_0000;
@@ -71,8 +71,8 @@ impl From<ElfReadError> for PagingSetupError {
 pub fn setup_paging<'a>(
     bump_memory: &mut BumpMemory,
     memory_map: impl Iterator<Item = &'a MultibootMMapEntry>,
-    kernel_module: &mut MultibootModule,
-) -> Result<(u32, u64), PagingSetupError> {
+    kernel: &MultibootModule,
+) -> Result<&'static mut PageTable, PagingSetupError> {
     let l4_table = new_empty_page_table(bump_memory);
 
     let mut map = |offset: i64, no_exec: bool, writable: bool, start: u64, len: u64| {
@@ -110,35 +110,23 @@ pub fn setup_paging<'a>(
         );
     }
 
-    // kernel mappings
-    let elf_start = kernel_module.addr() as u64;
-    let elf_end = elf_start + kernel_module.len() as u64;
+    map(0, true, true, kernel.addr() as u64, kernel.len() as u64);
 
-    if elf_start % PAGE_SIZE != 0 {
-        return Err(PagingSetupError::ElfNotAligned);
-    }
-
-    let entry_point = map_kernel(bump_memory, kernel_module, l4_table)?;
-
-    Ok((l4_table as *const _ as u32, entry_point))
+    Ok(l4_table)
 }
 
-fn map_kernel(
+fn map_sections<'a>(
     bump_memory: &mut BumpMemory,
-    kernel_module: &mut MultibootModule,
     l4_table: &mut PageTable,
-) -> Result<u64, PagingSetupError> {
-    let raw_kernel_elf = kernel_module.bytes();
+    raw_kernel_elf: &'a [u8],
+) -> Result<ElfHeaderReader<'a, u64>, PagingSetupError> {
     let kernel_ident = ElfReader::new(raw_kernel_elf)?;
+
     let kernel_elf = match kernel_ident.header()? {
         elf::ArchHeaderReader::Bits64(k) => k,
         elf::ArchHeaderReader::Bits32(_) => {
             return Err(PagingSetupError::Bits32Unsupported);
         }
-    };
-
-    let Some(entry_point) = kernel_elf.entry_point() else {
-        return Err(PagingSetupError::NoEntryPoint);
     };
 
     match kernel_elf.arch() {
@@ -149,8 +137,9 @@ fn map_kernel(
     }
 
     let elf_start = kernel_elf.elf_start().as_u64();
-
-    let relo_table = kernel_elf.relocation_table()?;
+    if elf_start % PAGE_SIZE != 0 {
+        return Err(PagingSetupError::ElfNotAligned);
+    }
 
     for program_header in kernel_elf.program_headers()? {
         let virt_addr = program_header.addr();
@@ -178,7 +167,6 @@ fn map_kernel(
         let no_exec = !flags.executable();
         let writable = flags.writable();
 
-        // parts that can be mapped the raw elf module.
         let file_len = program_header.file_size();
 
         map_phys_range(
@@ -196,15 +184,16 @@ fn map_kernel(
         // The size in memory is larger then the size in the file.
         // This means that whatever is not placed in the file, should be mapped to zero.
         if mem_len > program_header.file_size() {
-            let zero_addr = virt_addr + program_header.file_size();
-            let zero_len = program_header.memory_size() - program_header.file_size();
+            let bss_addr = virt_addr + program_header.file_size();
+            let bss_len = program_header.memory_size() - program_header.file_size();
 
-            let zero_addr_aligned = align_down(zero_addr);
-            let zero_len_aligned = align_up(zero_len);
+            let bss_addr_aligned = align_down(bss_addr);
 
-            let alignment_offset = (zero_addr - zero_addr_aligned) as usize;
-            let backing = bump_memory.alloc(zero_len as usize + alignment_offset);
-            let backing_offset = backing.as_ptr() as i64 - zero_addr as i64;
+            let alignment_offset = (bss_addr - bss_addr_aligned) as usize;
+            let bss_len_aligned = align_up(bss_len + alignment_offset as u64);
+
+            let backing = bump_memory.alloc_aligned(bss_len_aligned as usize, PAGE_SIZE as usize);
+            let backing_offset = backing.as_ptr() as i64 - bss_addr_aligned as i64;
 
             map_phys_range(
                 bump_memory,
@@ -214,18 +203,19 @@ fn map_kernel(
                 no_exec,
                 writable,
                 3,
-                zero_addr_aligned,
-                zero_len_aligned,
+                bss_addr_aligned,
+                bss_len_aligned,
             );
 
-            // Copy whatever is between zero addr and aligned zero addr into the backing.
-            // The rest should be zeros.
+            // The .bss section is aligned down, this mean that there could be some data left that
+            // is not part of the .bss section. This menas that what ever is left needs to be
+            // copied over. The rest should be initialized to 0.
             let end_index = program_header.file_size() as usize;
             let start_index = end_index - alignment_offset;
 
-            let left_over_data = &program_header.bytes()?[start_index..end_index];
             let (left_over_backing, zero_backing) = backing.split_at_mut(alignment_offset);
 
+            let left_over_data = &program_header.bytes()?[start_index..end_index];
             left_over_backing.copy_from_slice(left_over_data);
 
             for byte in zero_backing {
@@ -234,46 +224,45 @@ fn map_kernel(
         }
     }
 
-    // Final step, in LOAD sections apply relocaitons.
-    // The relocation table is borrowed, so we have to copy the table first.
-    let mut relo_table_copy = FixedVec::<128, _>::new();
-    for program_header in kernel_elf.program_headers()? {
-        if program_header.kind() != SectionKind::Load {
-            continue;
+    Ok(kernel_elf)
+}
+
+unsafe fn apply_relocations(kernel_elf: ElfHeaderReader<'_, u64>) -> Result<(), PagingSetupError> {
+    let Some(relo_table) = kernel_elf.relocation_table()? else {
+        return Ok(());
+    };
+
+    for relo_entry in relo_table {
+        if relo_entry.kind() != RelocationEntryKind::Relative {
+            return Err(PagingSetupError::ReloTableKind);
         }
 
-        let header_addr = program_header.addr();
-
-        let relo_entries = relo_table
-            .iter()
-            .flat_map(|t| t.into_iter())
-            .filter(|entry| {
-                entry.offset() >= header_addr
-                    && entry.offset() <= header_addr + program_header.memory_size()
-            });
-
-        for entry in relo_entries {
-            if entry.offset() > header_addr + program_header.file_size() {
-                // TODO: allow for relocation in .bss sections
-                return Err(PagingSetupError::ReloTableKind);
-            }
-
-            if entry.kind() != RelocationEntryKind::Relative {
-                return Err(PagingSetupError::ReloTableKind);
-            }
-
-            let index = entry.offset() - program_header.addr() + program_header.data_offset();
-            relo_table_copy.push((entry.addend(), index));
-        }
+        core::ptr::write(relo_entry.offset() as *mut u64, relo_entry.addend());
     }
 
-    let elf_bytes = kernel_module.bytes_mut();
-    for (addend, index) in relo_table_copy.iter() {
-        let index = *index as usize;
-        let value_bytes = addend.to_ne_bytes();
-        let dest_bytes = &mut elf_bytes[(index)..(index + value_bytes.len())];
-        dest_bytes.copy_from_slice(&value_bytes);
-    }
+    Ok(())
+}
+
+fn unmap_module(kernel: &MultibootModule) -> Result<(), PagingSetupError> {
+    Ok(())
+}
+
+pub unsafe fn map_kernel(
+    bump_memory: &mut BumpMemory,
+    kernel: &MultibootModule,
+    l4_table: &mut PageTable,
+) -> Result<u64, PagingSetupError> {
+    let raw_kernel_elf =
+        core::slice::from_raw_parts((kernel.addr()) as *const u8, kernel.len() as usize);
+
+    let kernel_elf = map_sections(bump_memory, l4_table, raw_kernel_elf)?;
+
+    let Some(entry_point) = kernel_elf.entry_point() else {
+        return Err(PagingSetupError::NoEntryPoint);
+    };
+
+    apply_relocations(kernel_elf)?;
+    unmap_module(kernel)?;
 
     Ok(entry_point)
 }
@@ -322,6 +311,10 @@ fn map_phys_range(
                 let mut merged_flags = flags.set_huge(level > 0);
 
                 let phys_addr = (start as i64 + phys_offset) as u64;
+
+                if phys_addr % PAGE_SIZE != 0 {
+                    panic!("Tried to map an unaligned page");
+                }
 
                 if !existing_flags.noexec() || !no_exec {
                     merged_flags = merged_flags.set_no_exec(false);

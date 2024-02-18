@@ -69,9 +69,7 @@ pub fn long_mode_supported() -> bool {
     (output & 1 << 29) != 0
 }
 
-#[no_mangle] // make debugging easier
-#[inline(never)]
-pub unsafe fn enter_long_mode(l4_page_table: u32, gdt_table: &InitialGdt) {
+pub unsafe fn enable_paging(l4_page_table: u32) {
     const PAE_FLAG: u32 = 1 << 5;
 
     const EFER_MSR: u32 = 0xC0000080;
@@ -112,7 +110,11 @@ pub unsafe fn enter_long_mode(l4_page_table: u32, gdt_table: &InitialGdt) {
          EFER_BITS = const EFER_BITS,
          PG_BIT = const PG_BIT,
     );
+}
 
+#[no_mangle] // make debugging easier
+#[inline(never)]
+pub unsafe fn enter_long_mode(gdt_table: &InitialGdt) {
     // load the gdt with data segments with long mode bits.
     gdt_table.table.load();
     gdt_table.kernel_data.load_into_ds();

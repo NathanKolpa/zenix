@@ -5,6 +5,7 @@ use bootinfo::MemoryRegion;
 pub const MULTIBOOT_MAGIC: u32 = 0x2BADB002;
 
 #[repr(C)]
+#[derive(Clone, Copy)]
 pub struct MultibootModule {
     start: u32,
     end: u32,
@@ -19,14 +20,6 @@ impl MultibootModule {
 
     pub fn len(&self) -> u32 {
         self.end - self.start
-    }
-
-    pub fn bytes(&self) -> &[u8] {
-        unsafe { core::slice::from_raw_parts(self.addr() as *const _, self.len() as usize) }
-    }
-
-    pub fn bytes_mut(&mut self) -> &mut [u8] {
-        unsafe { core::slice::from_raw_parts_mut(self.addr() as *mut _, self.len() as usize) }
     }
 
     pub fn as_info_region(&self) -> MemoryRegion {
@@ -139,7 +132,7 @@ impl MultibootInfo {
         })
     }
 
-    pub fn take_first_mod(&mut self) -> Option<&'static mut MultibootModule> {
+    pub fn take_first_mod(&mut self) -> Option<MultibootModule> {
         if self.flags & (1 << 3) == 0 {
             return None;
         }
@@ -152,7 +145,7 @@ impl MultibootInfo {
         let addr = self.mods_addr;
         self.mods_addr += size_of::<MultibootModule>() as u32;
 
-        Some(unsafe { &mut *(addr as *mut MultibootModule) })
+        Some(unsafe { *(addr as *mut MultibootModule) })
     }
 
     pub fn mods(&self) -> Option<&[MultibootModule]> {

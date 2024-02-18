@@ -4,7 +4,7 @@ SECTIONS {
 	. = 1M;
 
 	STACK_START = .;
-	. = . + 64K;
+	. = . + 128K;
 	STACK_END = .;
 
 	. = . + 4;

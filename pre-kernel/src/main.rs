@@ -14,15 +14,13 @@ mod vga;
 
 use core::arch::{asm, global_asm};
 
-use essentials::address::VirtualAddress;
-
 use crate::{
-    boot_info::setup_boot_info,
+    boot_info::{finalize_boot_info, setup_boot_info},
     bump_memory::BumpMemory,
     gdt::setup_gdt_table,
     long_mode::*,
     multiboot::{MultibootInfo, MULTIBOOT_MAGIC},
-    paging::setup_paging,
+    paging::{map_kernel, setup_paging, PagingSetupError},
 };
 
 global_asm!(include_str!("boot.s"));
@@ -44,70 +42,106 @@ fn panic(info: &core::panic::PanicInfo) -> ! {
     }
 }
 
-#[no_mangle]
-pub extern "C" fn main(multiboot_magic_arg: u32, multiboot_info_addr: u32) {
-    vga::clear_screen();
-    vga::set_running_msg();
+enum PreKernelError {
+    InvalidMulitbootMagic,
+    CpuidNotsupported,
+    ExtendedCpuidNotSupported,
+    LongModeNotSupported,
+    NoModulesLoaded,
+    NoMemoryMapInfo,
+    FailedToSetupPaging(PagingSetupError),
+    FailedToMapKernel(PagingSetupError),
+    UnexpectedReturn,
+}
 
+impl PreKernelError {
+    pub fn as_str(&self) -> &'static str {
+        match self {
+            PreKernelError::InvalidMulitbootMagic => {
+                "Multiboot magic value in EAX does not equal 0x2BADB002."
+            }
+            PreKernelError::CpuidNotsupported => "CPUID not supported by your processor.",
+            PreKernelError::ExtendedCpuidNotSupported => {
+                "Extended CPUID not supported by your processor."
+            }
+            PreKernelError::LongModeNotSupported => "Long Mode not supported by your processor.",
+            PreKernelError::NoModulesLoaded => {
+                "No modules loaded. Have you configured your bootloader correctly?"
+            }
+            PreKernelError::NoMemoryMapInfo => "Multiboot Info does not contain the mmap_* fields.",
+            PreKernelError::FailedToSetupPaging(e) => e.as_str(),
+            PreKernelError::FailedToMapKernel(e) => e.as_str(),
+            PreKernelError::UnexpectedReturn => "Unexpected return from kernel_main",
+        }
+    }
+}
+
+fn run(multiboot_magic_arg: u32, multiboot_info_addr: u32) -> Result<(), PreKernelError> {
     if multiboot_magic_arg != MULTIBOOT_MAGIC {
-        vga::set_fail_msg("Multiboot magic value in EAX does not equal 0x2BADB002.");
-        return;
+        return Err(PreKernelError::InvalidMulitbootMagic);
     }
 
     if !cpuid_supported() {
-        vga::set_fail_msg("CPUID not supported by your processor.");
-        return;
+        return Err(PreKernelError::CpuidNotsupported);
     }
 
     if !extended_cpuid_supported() {
-        vga::set_fail_msg("Extended CPUID not supported by your processor.");
-        return;
+        return Err(PreKernelError::ExtendedCpuidNotSupported);
     }
 
     if !long_mode_supported() {
-        vga::set_fail_msg("Long Mode not supported by your processor.");
-        return;
+        return Err(PreKernelError::LongModeNotSupported);
     }
 
     let info_ptr = multiboot_info_addr as *mut MultibootInfo;
     let info = unsafe { &mut *info_ptr };
 
-    let Some(kernel_module) = info.take_first_mod() else {
-        vga::set_fail_msg("No modules loaded. Have you configured your bootloader correctly?");
-        return;
-    };
+    let kernel_module = info
+        .take_first_mod()
+        .ok_or(PreKernelError::NoModulesLoaded)?;
 
+    // It's important to put the kernel_module_region on the stack.
+    // Because `map_kernel` needs access to this information and will result in a page fault if it
+    // is implicitly unmapped after `enable_paging`.
     let kernel_module_region = kernel_module.as_info_region();
 
-    let Some(mmap) = info.mmap() else {
-        vga::set_fail_msg("Multiboot Info does not contain the mmap_* fields.");
-        return;
-    };
+    let mmap = info.mmap().ok_or(PreKernelError::NoMemoryMapInfo)?;
 
     let mut bump_memory = unsafe { BumpMemory::new_from_linker() };
 
-    let (l4_page_table, entry_point) =
-        match setup_paging(&mut bump_memory, mmap.clone(), kernel_module) {
-            Ok(t) => t,
-            Err(e) => {
-                vga::set_fail_msg(e.as_str());
-                return;
-            }
-        };
-
     let gdt_table = setup_gdt_table(&mut bump_memory);
 
-    let kernel_boot_info = setup_boot_info(bump_memory, mmap, kernel_module_region, info);
+    // Create the kernel boot info before enabling paging, because the mulitboot info can't be accessed after
+    // paging doing so.
+    let kernel_boot_info = setup_boot_info(&mut bump_memory, mmap, kernel_module_region, info);
+
+    let l4_page_table = setup_paging(&mut bump_memory, mmap.clone(), &kernel_module)
+        .map_err(PreKernelError::FailedToSetupPaging)?;
+
+    // Enable paging, this is required for the `map_kernel` function.
+    // From now on, multi boot information is not mapped anymore.
+    unsafe {
+        enable_paging(l4_page_table as *const _ as u32);
+    }
+
+    let kernel_entry_point = unsafe {
+        map_kernel(&mut bump_memory, &kernel_module, l4_page_table)
+            .map_err(PreKernelError::FailedToMapKernel)?
+    };
+
+    // Set the final parameters of the kernel boot info because the kernel needs to know how much
+    // memory is left over in the bump memory.
+    finalize_boot_info(bump_memory, kernel_boot_info);
 
     unsafe {
-        enter_long_mode(l4_page_table, &gdt_table);
+        enter_long_mode(&gdt_table);
     }
 
     vga::set_success_msg();
 
-    unsafe { call_kernel_main(entry_point, kernel_boot_info) };
+    unsafe { call_kernel_main(kernel_entry_point, kernel_boot_info as *const _ as u64) };
 
-    vga::set_fail_msg("Unexpectedly returned from kernel_main");
+    Err(PreKernelError::UnexpectedReturn)
 }
 
 #[no_mangle]
@@ -135,4 +169,15 @@ unsafe fn call_kernel_main(entry: u64, kernel_boot_info: u64) {
         out("rax") _,
         out("rdi") _
     )
+}
+
+#[no_mangle]
+pub extern "C" fn main(multiboot_magic_arg: u32, multiboot_info_addr: u32) {
+    vga::clear_screen();
+    vga::set_running_msg();
+
+    if let Err(err) = run(multiboot_magic_arg, multiboot_info_addr) {
+        vga::set_fail_msg(err.as_str());
+        return;
+    }
 }

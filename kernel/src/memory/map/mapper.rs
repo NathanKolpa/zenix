@@ -14,6 +14,7 @@ mod errors;
 mod props;
 mod tree_display;
 
+#[derive(Debug)]
 struct NavigateCtx {
     entry: PageTableEntry,
     depth: u8,
@@ -22,6 +23,7 @@ struct NavigateCtx {
     points_to_backing: bool,
     addr: VirtualAddress,
     size: usize,
+    is_empty: bool,
 }
 
 const BORROW_BIT: u64 = 0;
@@ -95,6 +97,7 @@ impl MemoryMapper {
                 Some(0),
                 false,
                 false,
+                false,
                 share_entry,
             )
             .unwrap();
@@ -102,6 +105,8 @@ impl MemoryMapper {
     }
 
     pub fn new_inherited_from_shared(&self) {}
+
+    pub fn unmap_all_owned(&mut self) {}
 
     /// Map a region of virtual memory.
     ///
@@ -151,17 +156,91 @@ impl MemoryMapper {
             Ok(Some(entry))
         };
 
-        let start = unsafe { self.navigate_mut(address, size, None, true, false, alloc_missing) }?;
+        let navigation_result =
+            unsafe { self.navigate_mut(address, size, None, true, false, false, alloc_missing) };
+
+        let start = match navigation_result {
+            Ok(start) => start,
+            Err(NewMapError::OutOfFrames) => {
+                unsafe { self.unmap_inner(address, total_size, false) }
+                    .expect("dealloc should not fail on memory created by map()");
+
+                return Err(NewMapError::OutOfFrames);
+            }
+            Err(e) => return Err(e),
+        };
 
         Ok((start, total_size))
     }
 
+    /// Unmap a region of memory.
+    ///
+    /// When a operation is stopped due to an error, the original mappings will not be restored.
+    /// Instead, the mappings will be in a unpredictable (but valid) state. The strictness of this
+    /// API is meant to encourage the caller to be _correct_.
+    ///
+    /// # Safety
+    ///
+    /// The caller must ensure that the memory by the pages is allocated by the
+    /// [`FRAME_ALLOCATOR`]. Using deallocated memory can result in UB.
+    ///
+    /// # Arguments
+    ///
+    /// * `address` - The starting virtual address of the memory region to be unmapped.
+    /// * `size` - The (maximum) size of the memory region to be unmapped, in bytes.
+    ///
+    /// # Returns a `Result` where:
+    ///
+    /// * `Err(ModifyMapError::OutOfBounds)` The requested size is smaller than can be possibly
+    /// deallocated due to the page structure. Likely because the size is not aligned to the page
+    /// size, or there is a huge page within the region.
+    /// * `Err(ModifyMapError::NotOwned)` The region of memory contains pages that are not owned by
+    /// the current MemoryMapper.
+    /// * `Err(ModifyMapError::NotMapped)` The region of memory contains pages that are not mapped.
+    /// * `Ok(())` The operation was successfull.
     pub unsafe fn unmap(
         &mut self,
-        _address: VirtualAddress,
-        _size: usize,
+        address: VirtualAddress,
+        size: usize,
     ) -> Result<(), ModifyMapError> {
-        todo!()
+        self.unmap_inner(address, size, true)
+    }
+
+    unsafe fn unmap_inner(
+        &mut self,
+        address: VirtualAddress,
+        size: usize,
+        fail_on_out_of_bounds: bool,
+    ) -> Result<(), ModifyMapError> {
+        let mut total_size = 0;
+
+        let dealloc = |ctx: NavigateCtx,
+                       huge_size: Option<PageSize>|
+         -> Result<Option<PageTableEntry>, ModifyMapError> {
+            let mut entry = ctx.entry;
+
+            if !ctx.points_to_backing && !ctx.is_empty {
+                return Ok(None);
+            }
+
+            let request_size = huge_size.unwrap_or(PageSize::Size4Kib);
+
+            if request_size.as_usize() > size && fail_on_out_of_bounds {
+                return Err(ModifyMapError::OutOfBounds);
+            }
+
+            FRAME_ALLOC.deallocate(entry.addr());
+            total_size += request_size.as_usize();
+
+            entry.set_flags(PageTableEntryFlags::null());
+            entry.set_addr(PhysicalAddress::null());
+
+            Ok(Some(entry))
+        };
+
+        self.navigate_mut(address, size, None, true, true, true, dealloc)?;
+
+        Ok(())
     }
 
     /// Calculate the effective [`MemoryProperties`] on a given range of memory.
@@ -210,7 +289,7 @@ impl MemoryMapper {
                     .enumerate()
                     .rfind(|(_, e)| e.flags().present())
                     .map(|(i, _)| i as i32)
-                    .unwrap_or_default();
+                    .unwrap_or(600);
             }
 
             let entry_index = &mut start_indices[table_index - 1];
@@ -241,6 +320,7 @@ impl MemoryMapper {
                 size: 4096 * 512usize.pow(4u32.saturating_sub(table_index as u32)),
                 points_to_backing: (entry.flags().huge() && entry.flags().present())
                     || table_index == 4,
+                is_empty: last_entry_index == 600,
             };
 
             apply(ctx)?;
@@ -265,6 +345,7 @@ impl MemoryMapper {
         max_depth: Option<usize>,
         fail_on_unowned: bool,
         fail_on_missing: bool,
+        revisit_parent: bool,
         mut apply: impl FnMut(NavigateCtx, Option<PageSize>) -> Result<Option<PageTableEntry>, E>,
     ) -> Result<VirtualAddress, E>
     where
@@ -283,10 +364,6 @@ impl MemoryMapper {
 
         loop {
             let current_addr = VirtualAddress::from_indices(start_indices);
-
-            if current_addr >= end {
-                break;
-            }
 
             let table_index = table_stack.len();
             let table_level = 4 - table_index + 1;
@@ -326,22 +403,32 @@ impl MemoryMapper {
                 *entry_index = 0;
                 last_entry_index = -1;
 
-                if let Some(prev) = table_index
-                    .checked_sub(2)
-                    .and_then(|prev_index| start_indices.get_mut(prev_index))
-                {
-                    *prev += 1;
+                if !revisit_parent {
+                    if let Some(prev) = table_index
+                        .checked_sub(2)
+                        .and_then(|prev_index| start_indices.get_mut(prev_index))
+                    {
+                        *prev += 1;
+                    }
                 }
+
                 continue;
             };
 
             let entry = *entry_ref;
 
-            if !entry.flags().present() && fail_on_missing {
+            if !entry.flags().present() && fail_on_missing && current_addr != end {
                 return Err(ModifyMapError::NotMapped.into());
             }
 
             if !entry.flags().custom::<BORROW_BIT>() || !entry.flags().present() {
+                let mut is_empty = false;
+
+                if entry.flags().present() {
+                    let table = self.deref_page_table(entry.addr());
+                    is_empty = !table.iter().any(|e| e.flags().present());
+                }
+
                 let ctx = NavigateCtx {
                     addr: current_addr,
                     entry,
@@ -350,6 +437,7 @@ impl MemoryMapper {
                     is_last_present_entry: last_entry_index as u16 == *entry_index,
                     points_to_backing: huge_size.is_some() || table_index == 4,
                     size: 4096 * 512usize.pow(4u32.saturating_sub(table_index as u32)),
+                    is_empty,
                 };
 
                 if let Some(new_entry) = apply(ctx, huge_size)? {
@@ -374,6 +462,10 @@ impl MemoryMapper {
                 last_entry_index = -1;
             } else {
                 *entry_index += 1;
+
+                if current_addr >= end {
+                    break;
+                }
             }
         }
 

@@ -1,10 +1,11 @@
 use core::usize;
 
 use bootinfo::BootInfo;
+use essentials::address::VirtualAddress;
 
 use crate::memory::{
     alloc::{kernel_alloc::KERNEL_ALLOC, MemoryInfo, FRAME_ALLOC},
-    map::mapper::MemoryMapper,
+    map::mapper::{MemoryMapper, MemoryProperties},
 };
 use crate::{arch, debug};
 
@@ -44,6 +45,17 @@ pub unsafe fn init(boot_info: &BootInfo) {
 
     let mut root_mapper = MemoryMapper::from_active_page(boot_info.physycal_memory_offset());
     root_mapper.share_all();
+
+    let start_addr = VirtualAddress::new(1024 * 1024 * 1024 * 512);
+    let size = 1024 * 1024 * 1024;
+
+    let props = MemoryProperties::new(true, true, true, false);
+
+    let result = root_mapper.map(start_addr, size, props);
+    debug_println!("Alloc {result:?}");
+
+    let display = root_mapper.tree_display(start_addr, size, None);
+    debug_println!("{display}");
 
     debug_println!("Graceull exit");
 }

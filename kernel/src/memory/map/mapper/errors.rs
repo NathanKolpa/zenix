@@ -9,6 +9,7 @@ pub enum NewMapError {
 pub enum ModifyMapError {
     NotOwned,
     NotMapped,
+    OutOfBounds,
 }
 
 impl From<ModifyMapError> for NewMapError {
@@ -16,6 +17,7 @@ impl From<ModifyMapError> for NewMapError {
         match value {
             ModifyMapError::NotOwned => NewMapError::NotOwned,
             ModifyMapError::NotMapped => unreachable!(),
+            ModifyMapError::OutOfBounds => unreachable!(),
         }
     }
 }

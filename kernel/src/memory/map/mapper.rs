@@ -79,7 +79,10 @@ impl MemoryMapper {
     pub fn share_all(&mut self) {
         let share_entry = |ctx: NavigateCtx, _| -> Result<Option<PageTableEntry>, ModifyMapError> {
             let mut entry = ctx.entry;
-            if entry.flags().custom::<BORROW_BIT>() || !entry.flags().present() {
+            if entry.flags().custom::<BORROW_BIT>()
+                || !entry.flags().present()
+                || ctx.points_to_backing
+            {
                 return Ok(None);
             }
 
@@ -89,12 +92,10 @@ impl MemoryMapper {
         };
 
         unsafe {
-            // For every entry in the l4 table, set the borrow bit to 1.
-            // There is no need futher in the kernel to set the borrow bit in each child page.
             self.navigate_mut(
                 VirtualAddress::null(),
                 usize::MAX,
-                Some(0),
+                Some(3),
                 false,
                 false,
                 false,
@@ -424,7 +425,7 @@ impl MemoryMapper {
             if !entry.flags().custom::<BORROW_BIT>() || !entry.flags().present() {
                 let mut is_empty = false;
 
-                if entry.flags().present() {
+                if entry.flags().present() && !entry.flags().huge() && table_index <= max_depth {
                     let table = self.deref_page_table(entry.addr());
                     is_empty = !table.iter().any(|e| e.flags().present());
                 }

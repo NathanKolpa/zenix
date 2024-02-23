@@ -1,6 +1,5 @@
-use core::usize;
-
 use bootinfo::BootInfo;
+use core::usize;
 use essentials::address::VirtualAddress;
 
 use crate::memory::{

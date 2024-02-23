@@ -50,20 +50,24 @@ pub struct MemoryMapper {
 }
 
 impl MemoryMapper {
-    /// Create a new `MemoryMapper` instance from the current `CR3` register value.
+    /// Create a new `MemoryMapper` instance from the current `CR3` register value, and call
+    /// [`Self::share_all`].
     ///
     /// # Safety
     ///
     /// - This function assumes the `global_offset` is valid for the current machine.
-    /// - Creating more than one instance though this function can lead to UB because borrow checking is not preformed.
-    /// - The caller must ensure that `share_all` is called before the MemoryMapper gets dropped.
-    pub unsafe fn from_active_page(global_offset: usize) -> Self {
+    /// - Creating more than one root mapper can result in UB.
+    pub unsafe fn new_root_mapper(global_offset: usize) -> Self {
         let l4_table = cr3::active_page();
 
-        Self {
+        let mut mapper = Self {
             global_offset,
             l4_table,
-        }
+        };
+
+        mapper.share_all();
+
+        mapper
     }
 
     /// Make all owned memory shared.
@@ -81,7 +85,7 @@ impl MemoryMapper {
             let mut entry = ctx.entry;
             if entry.flags().custom::<BORROW_BIT>()
                 || !entry.flags().present()
-                || ctx.points_to_backing
+                || !ctx.points_to_backing
             {
                 return Ok(None);
             }
@@ -95,7 +99,7 @@ impl MemoryMapper {
             self.navigate_mut(
                 VirtualAddress::null(),
                 usize::MAX,
-                Some(3),
+                None,
                 false,
                 false,
                 false,
@@ -107,9 +111,15 @@ impl MemoryMapper {
 
     pub fn new_inherited_from_shared(&self) {}
 
-    pub fn unmap_all_owned(&mut self) {}
+    pub fn unmap_all_owned(&mut self) {
+        self.unmap_inner(VirtualAddress::null(), usize::MAX, true, false)
+            .expect("unmap_all_owned should never fail")
+    }
 
     /// Map a region of virtual memory.
+    ///
+    /// At no point should the kernel hold a refrence to the new mapping where unmapping it leads
+    /// to UB. This way, [`Self::unmap`], [`Self::unmap_all_owned`] and [`Self::drop`] is safe.
     ///
     /// # Arguments
     ///
@@ -126,8 +136,6 @@ impl MemoryMapper {
     ) -> Result<(VirtualAddress, usize), NewMapError> {
         let flags = Self::props_to_flags(properties, true);
 
-        // TODO: when FRAME_ALLOC::allocate returns none, we should go back and dealloc the created
-        // frames.
         let mut total_size = 0;
         let alloc_missing = |ctx: NavigateCtx,
                              huge_size: Option<PageSize>|
@@ -163,7 +171,7 @@ impl MemoryMapper {
         let start = match navigation_result {
             Ok(start) => start,
             Err(NewMapError::OutOfFrames) => {
-                unsafe { self.unmap_inner(address, total_size, false) }
+                self.unmap_inner(address, total_size, false, false)
                     .expect("dealloc should not fail on memory created by map()");
 
                 return Err(NewMapError::OutOfFrames);
@@ -180,10 +188,8 @@ impl MemoryMapper {
     /// Instead, the mappings will be in a unpredictable (but valid) state. The strictness of this
     /// API is meant to encourage the caller to be _correct_.
     ///
-    /// # Safety
-    ///
-    /// The caller must ensure that the memory by the pages is allocated by the
-    /// [`FRAME_ALLOCATOR`]. Using deallocated memory can result in UB.
+    /// This function is safe because the kernel should never hold refrences to memory created from
+    /// [`Self::map`].
     ///
     /// # Arguments
     ///
@@ -199,18 +205,15 @@ impl MemoryMapper {
     /// the current MemoryMapper.
     /// * `Err(ModifyMapError::NotMapped)` The region of memory contains pages that are not mapped.
     /// * `Ok(())` The operation was successfull.
-    pub unsafe fn unmap(
-        &mut self,
-        address: VirtualAddress,
-        size: usize,
-    ) -> Result<(), ModifyMapError> {
-        self.unmap_inner(address, size, true)
+    pub fn unmap(&mut self, address: VirtualAddress, size: usize) -> Result<(), ModifyMapError> {
+        self.unmap_inner(address, size, false, true)
     }
 
-    unsafe fn unmap_inner(
+    fn unmap_inner(
         &mut self,
         address: VirtualAddress,
         size: usize,
+        lax: bool,
         fail_on_out_of_bounds: bool,
     ) -> Result<(), ModifyMapError> {
         let mut total_size = 0;
@@ -220,7 +223,10 @@ impl MemoryMapper {
          -> Result<Option<PageTableEntry>, ModifyMapError> {
             let mut entry = ctx.entry;
 
-            if !ctx.points_to_backing && !ctx.is_empty {
+            if (!ctx.points_to_backing && !ctx.is_empty)
+                || !entry.flags().present()
+                || entry.flags().custom::<BORROW_BIT>()
+            {
                 return Ok(None);
             }
 
@@ -230,7 +236,9 @@ impl MemoryMapper {
                 return Err(ModifyMapError::OutOfBounds);
             }
 
-            FRAME_ALLOC.deallocate(entry.addr());
+            // Safety:
+            // Owned pages *should* be using allocated using `FRAME_ALLOC`.
+            unsafe { FRAME_ALLOC.deallocate(entry.addr()) };
             total_size += request_size.as_usize();
 
             entry.set_flags(PageTableEntryFlags::null());
@@ -239,7 +247,7 @@ impl MemoryMapper {
             Ok(Some(entry))
         };
 
-        self.navigate_mut(address, size, None, true, true, true, dealloc)?;
+        unsafe { self.navigate_mut(address, size, None, !lax, !lax, true, dealloc) }?;
 
         Ok(())
     }
@@ -266,6 +274,7 @@ impl MemoryMapper {
         let mut start_indices = start.indices();
 
         let mut table_stack = FixedVec::<4, &PageTable>::new();
+
         unsafe {
             table_stack.push(self.deref_l4_table());
         }
@@ -290,7 +299,7 @@ impl MemoryMapper {
                     .enumerate()
                     .rfind(|(_, e)| e.flags().present())
                     .map(|(i, _)| i as i32)
-                    .unwrap_or(600);
+                    .unwrap_or_default();
             }
 
             let entry_index = &mut start_indices[table_index - 1];
@@ -321,7 +330,7 @@ impl MemoryMapper {
                 size: 4096 * 512usize.pow(4u32.saturating_sub(table_index as u32)),
                 points_to_backing: (entry.flags().huge() && entry.flags().present())
                     || table_index == 4,
-                is_empty: last_entry_index == 600,
+                is_empty: false,
             };
 
             apply(ctx)?;
@@ -362,6 +371,7 @@ impl MemoryMapper {
         table_stack.push((self.deref_l4_table_mut(), self.l4_table));
 
         let mut last_entry_index = -1;
+        let mut revisit = false;
 
         loop {
             let current_addr = VirtualAddress::from_indices(start_indices);
@@ -411,6 +421,8 @@ impl MemoryMapper {
                     {
                         *prev += 1;
                     }
+                } else {
+                    revisit = true;
                 }
 
                 continue;
@@ -436,7 +448,8 @@ impl MemoryMapper {
                     depth: table_index as u8 - 1,
                     entry_index: *entry_index,
                     is_last_present_entry: last_entry_index as u16 == *entry_index,
-                    points_to_backing: huge_size.is_some() || table_index == 4,
+                    points_to_backing: (entry.flags().huge() && entry.flags().present())
+                        || table_index == 4,
                     size: 4096 * 512usize.pow(4u32.saturating_sub(table_index as u32)),
                     is_empty,
                 };
@@ -457,11 +470,16 @@ impl MemoryMapper {
             }
 
             let entry = *entry_ref;
-            if entry.flags().present() && table_stack.len() <= max_depth && !entry.flags().huge() {
+            if entry.flags().present()
+                && table_stack.len() <= max_depth
+                && !entry.flags().huge()
+                && !revisit
+            {
                 let table = self.deref_page_table_mut(entry.addr());
                 table_stack.push((table, entry.addr()));
                 last_entry_index = -1;
             } else {
+                revisit = false;
                 *entry_index += 1;
 
                 if current_addr >= end {
@@ -510,5 +528,11 @@ impl MemoryMapper {
         max_depth: Option<usize>,
     ) -> impl Display + '_ {
         MemoryMapTreeDisplay::new(self, max_depth.unwrap_or(3) as u8, start, size)
+    }
+}
+
+impl Drop for MemoryMapper {
+    fn drop(&mut self) {
+        self.unmap_all_owned();
     }
 }

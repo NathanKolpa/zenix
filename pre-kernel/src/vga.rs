@@ -7,7 +7,7 @@ pub fn set_fail_msg(message: &str) {
     let mut cursor = msg("Failure", STATUS_START, VGA_RED, VGA_BLACK);
     cursor = msg("Reason: ", next_line(cursor), VGA_RED, VGA_BLACK);
     cursor = msg(message, cursor, VGA_RED, VGA_BLACK);
-    cursor = msg(
+    msg(
         "Halting CPU. Reset your machine to try again.",
         next_line(cursor),
         VGA_RED,

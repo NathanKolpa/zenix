@@ -1,16 +1,16 @@
 use bootinfo::BootInfo;
-use core::usize;
+use x86_64::interrupt::enable_interrupts;
 
 use crate::memory::{
     alloc::{kernel_alloc::KERNEL_ALLOC, MemoryInfo, FRAME_ALLOC},
     map::mapper::MemoryMapper,
 };
-use crate::{arch, debug};
+use crate::{arch, debug_println};
 
 fn print_info(boot_info: &BootInfo) {
     debug_println!("Staring the Zenix operating system...");
     debug_println!("Architecture: {}", arch::NAME);
-    debug_println!("Debug channel: {}", debug::DEBUG_CHANNEL);
+    debug_println!("Debug channel: {}", crate::log::CHANNEL_NAME);
     if let Some(bootloader_name) = boot_info.bootloader_name() {
         debug_println!("Bootloader: {bootloader_name}");
     }
@@ -43,5 +43,6 @@ pub unsafe fn init(boot_info: &BootInfo) {
 
     let _root_mapper = MemoryMapper::new_root_mapper(boot_info.physycal_memory_offset());
 
+    enable_interrupts();
     debug_println!("Graceull exit");
 }

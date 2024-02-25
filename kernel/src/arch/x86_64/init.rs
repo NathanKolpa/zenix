@@ -5,4 +5,6 @@ use super::idt::IDT;
 pub fn init() {
     GDT.load();
     IDT.load();
+
+    super::idt::PIC_CHAIN.lock().init();
 }

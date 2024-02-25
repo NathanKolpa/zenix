@@ -12,8 +12,9 @@
 extern crate alloc;
 
 pub mod arch;
-pub mod debug;
 pub mod init;
+pub mod interface;
+pub mod log;
 pub mod memory;
 #[cfg(test)]
 pub mod testing;

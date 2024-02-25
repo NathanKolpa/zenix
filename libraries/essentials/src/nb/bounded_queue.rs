@@ -70,10 +70,10 @@ impl<const SIZE: usize, T> BoundedQueue<SIZE, T> {
 
         loop {
             let index = pos & Self::BUFFER_MASK;
-            unsafe_slot_ref = unsafe { &mut (*self.buffer.get()).as_mut()[index] };
+            unsafe_slot_ref = unsafe { &mut (*self.buffer.get())[index] };
             sequence_ref = &self.sequence_buffer[index];
 
-            let sequence = sequence_ref.load(Ordering::Acquire);
+            let sequence = sequence_ref.load(Ordering::Acquire) + index;
             let diff = sequence as isize - pos as isize;
 
             match diff {
@@ -168,17 +168,32 @@ mod tests {
 
     #[test_case]
     fn test_push_full() {
-        let queue = BoundedQueue::<64, i32>::new();
+        let queue = BoundedQueue::<2, i32>::new();
         assert_eq!(Ok(()), queue.push(100));
-        assert_eq!(Err(200), queue.push(200));
+        assert_eq!(Ok(()), queue.push(200));
+        assert_eq!(Err(300), queue.push(300));
     }
 
     #[test_case]
     fn test_push_full_pop_empty() {
         let queue = BoundedQueue::<64, i32>::new();
         assert_eq!(Ok(()), queue.push(100));
-        assert_eq!(Err(200), queue.push(200));
+        assert_eq!(Ok(()), queue.push(200));
         assert_eq!(Some(100), queue.pop());
+        assert_eq!(Some(200), queue.pop());
         assert_eq!(None, queue.pop());
+    }
+
+    #[test_case]
+    fn test_push_pop_lots() {
+        let queue = BoundedQueue::<1024, i32>::new();
+
+        for i in 0..1000 {
+            assert_eq!(Ok(()), queue.push(i));
+        }
+
+        for i in 0..1000 {
+            assert_eq!(Some(i), queue.pop());
+        }
     }
 }

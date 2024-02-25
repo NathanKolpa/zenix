@@ -35,22 +35,24 @@ impl<const SIZE: usize, T> BoundedQueue<SIZE, T> {
     pub const fn new() -> Self {
         let _: () = Self::SIZE_OK;
 
-        // TOOD: find a const initlization method that doesn't require losts of unstable featurs.
-        let mut sequence_buffer = array_uninit::<SIZE, AtomicUsize>();
-
-        for seq in &mut sequence_buffer {
-            *seq = MaybeUninit::new(AtomicUsize::new(0));
-        }
-
         Self {
             buffer: UnsafeCell::new(array_uninit()),
-            sequence_buffer: unsafe { core::mem::transmute_copy(&sequence_buffer) },
+            sequence_buffer: unsafe { core::mem::transmute_copy(&[0usize; SIZE]) },
             enqueue_pos: AtomicUsize::new(0),
             dequeue_pos: AtomicUsize::new(0),
             _padding1: [0; CACHE_LINE_SIZE],
             _padding2: [0; CACHE_LINE_SIZE],
             _padding3: [0; CACHE_LINE_SIZE],
             _phantom: PhantomData,
+        }
+    }
+
+    pub fn spin_block_push(&self, mut value: T) {
+        loop {
+            match self.push(value) {
+                Ok(_) => break,
+                Err(v) => value = v,
+            }
         }
     }
 
@@ -141,6 +143,9 @@ impl<const SIZE: usize, T> BoundedQueue<SIZE, T> {
         Some(unsafe { data.assume_init() })
     }
 }
+
+unsafe impl<const SIZE: usize, T: Send + Sync> Sync for BoundedQueue<SIZE, T> {}
+unsafe impl<const SIZE: usize, T: Send> Send for BoundedQueue<SIZE, T> {}
 
 #[cfg(test)]
 mod tests {

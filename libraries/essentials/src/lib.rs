@@ -2,11 +2,6 @@
 
 #![cfg_attr(not(test), no_std)]
 #![feature(custom_test_frameworks)]
-#![feature(const_refs_to_cell)]
-#![feature(const_for)]
-#![feature(const_trait_impl)]
-#![feature(effects)]
-#![feature(const_mut_refs)]
 #![test_runner(test_runner::runner)]
 #![feature(doc_cfg)]
 

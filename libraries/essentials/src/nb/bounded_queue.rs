@@ -73,7 +73,11 @@ impl<const SIZE: usize, T> BoundedQueue<SIZE, T> {
             unsafe_slot_ref = unsafe { &mut (*self.buffer.get())[index] };
             sequence_ref = &self.sequence_buffer[index];
 
-            let sequence = sequence_ref.load(Ordering::Acquire) + index;
+            let mut sequence = sequence_ref.load(Ordering::Acquire);
+            if sequence == 0 {
+                sequence += index;
+            }
+
             let diff = sequence as isize - pos as isize;
 
             match diff {
@@ -193,6 +197,33 @@ mod tests {
         }
 
         for i in 0..1000 {
+            assert_eq!(Some(i), queue.pop());
+        }
+    }
+
+    #[test_case]
+    fn test_push_pop_wrap() {
+        const SIZE: usize = 1024;
+
+        let queue = BoundedQueue::<SIZE, usize>::new();
+
+        for i in 0..SIZE {
+            assert_eq!(Ok(()), queue.push(i));
+        }
+
+        assert_eq!(Err(10), queue.push(10));
+
+        for i in 0..SIZE {
+            assert_eq!(Some(i), queue.pop());
+        }
+
+        assert_eq!(None, queue.pop());
+
+        for i in 0..SIZE {
+            assert_eq!(Ok(()), queue.push(i));
+        }
+
+        for i in 0..SIZE {
             assert_eq!(Some(i), queue.pop());
         }
     }

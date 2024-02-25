@@ -31,8 +31,11 @@ impl<const SIZE: usize, T> BoundedQueue<SIZE, T> {
     const BUFFER_MASK: usize = SIZE - 1;
     const SIZE_OK: () = assert!((SIZE >= 2) && ((SIZE & (SIZE - 1)) == 0));
 
+    /// Construct a lock free queue.
     pub const fn new() -> Self {
         let _: () = Self::SIZE_OK;
+
+        // TOOD: find a const initlization method that doesn't require losts of unstable featurs.
         let mut sequence_buffer = array_uninit::<SIZE, AtomicUsize>();
 
         for seq in &mut sequence_buffer {
@@ -51,6 +54,13 @@ impl<const SIZE: usize, T> BoundedQueue<SIZE, T> {
         }
     }
 
+    /// Enqueue a value.
+    ///
+    /// # Returns
+    ///
+    /// A [`Result`] where:
+    ///  - `Ok(())` If the operation is successful.
+    ///  - The original value is returned wrapped in `Err`, if the queue is full or encounters an error during the operation.
     pub fn push(&self, value: T) -> Result<(), T> {
         let mut pos = self.enqueue_pos.load(Ordering::Relaxed);
         let mut unsafe_slot_ref;
@@ -88,6 +98,11 @@ impl<const SIZE: usize, T> BoundedQueue<SIZE, T> {
         Ok(())
     }
 
+    /// Dequeues a value
+    ///
+    /// # Returns
+    ///
+    /// An option with `Some` that contains the dequeued value. And `None` if the queue is empty.
     pub fn pop(&self) -> Option<T> {
         let mut pos = self.dequeue_pos.load(Ordering::Relaxed);
         let mut unsafe_slot_ref;

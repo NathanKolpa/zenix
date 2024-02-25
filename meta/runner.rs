@@ -1,7 +1,4 @@
-use std::{
-    env,
-    fmt::Debug,
-};
+use std::{env, fmt::Debug};
 
 extern crate runner_common;
 use runner_common::RunnerOptions;

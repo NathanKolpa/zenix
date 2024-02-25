@@ -12,8 +12,11 @@ mod fixed_vec;
 mod panic_once;
 pub mod spin;
 mod static_ptr;
+pub mod nb;
+mod array_init;
 
 pub use bitmap::Bitmap;
 pub use fixed_vec::FixedVec;
 pub use panic_once::PanicOnce;
 pub use static_ptr::StaticPtr;
+pub use array_init::*;

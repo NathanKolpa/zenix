@@ -2,6 +2,8 @@ use core::mem::MaybeUninit;
 use core::ops::{Deref, DerefMut, Index, IndexMut};
 use core::{ptr, slice};
 
+use crate::array_uninit;
+
 /// A vector with a capacity known at compile-time.
 /// Because the fixed size, the vector can be stored entirely inline and on the stack.
 /// No heap allocator is thus required.
@@ -14,7 +16,7 @@ impl<const SIZE: usize, T> FixedVec<SIZE, T> {
     pub const fn new() -> Self {
         FixedVec {
             len: 0,
-            elements: unsafe { MaybeUninit::<[MaybeUninit<T>; SIZE]>::uninit().assume_init() },
+            elements: array_uninit::<SIZE, T>(),
         }
     }
 

@@ -21,4 +21,3 @@ pub fn array_init<const SIZE: usize, T>(mut construct: impl FnMut() -> T) -> [T;
 
     unsafe { array.assume_init() }
 }
-

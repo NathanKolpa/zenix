@@ -6,33 +6,19 @@ use core::{
     sync::atomic::{AtomicUsize, Ordering},
 };
 
-use crate::array_init;
+use crate::array_uninit;
 
 const CACHE_LINE_SIZE: usize = 64;
 type CacheLinePadding = [u8; CACHE_LINE_SIZE];
-
-pub struct Slot<T> {
-    sequence: AtomicUsize,
-    data: MaybeUninit<T>,
-}
-
-impl<T> Slot<T> {
-    fn new_uninit() -> Self {
-        Self {
-            sequence: AtomicUsize::new(0),
-            data: MaybeUninit::uninit(),
-        }
-    }
-}
 
 /// A lock-free multi-producer multi-consumer bounded queue.
 ///
 /// The algorithm is described by [Dmitry Vyukov](https://www.1024cores.net/home/lock-free-algorithms/queues/bounded-mpmc-queue).
 ///
 /// > The cost of enqueue/dequeue is 1 CAS per operation. No amortization, just 1 CAS. No dynamic memory allocation/management during operation. Producers and consumers are separated from each other (as in the two-lock queue), i.e. do not touch the same data while queue is not empty.
-pub struct BoundedQueue<S, T> {
-    buffer: UnsafeCell<S>,
-    buffer_mask: usize,
+pub struct BoundedQueue<const SIZE: usize, T> {
+    buffer: UnsafeCell<[MaybeUninit<T>; SIZE]>,
+    sequence_buffer: [AtomicUsize; SIZE],
     _padding1: CacheLinePadding,
     enqueue_pos: AtomicUsize,
     _padding2: CacheLinePadding,
@@ -41,14 +27,21 @@ pub struct BoundedQueue<S, T> {
     _phantom: PhantomData<T>,
 }
 
-impl<S, T> BoundedQueue<S, T>
-where
-    S: AsMut<[Slot<T>]>,
-{
-    fn new_and_init(mut buffer: S) -> Self {
+impl<const SIZE: usize, T> BoundedQueue<SIZE, T> {
+    const BUFFER_MASK: usize = SIZE - 1;
+    const SIZE_OK: () = assert!((SIZE >= 2) && ((SIZE & (SIZE - 1)) == 0));
+
+    pub const fn new() -> Self {
+        let _: () = Self::SIZE_OK;
+        let mut sequence_buffer = array_uninit::<SIZE, AtomicUsize>();
+
+        for seq in &mut sequence_buffer {
+            *seq = MaybeUninit::new(AtomicUsize::new(0));
+        }
+
         Self {
-            buffer_mask: buffer.as_mut().len() - 1,
-            buffer: UnsafeCell::new(buffer),
+            buffer: UnsafeCell::new(array_uninit()),
+            sequence_buffer: unsafe { core::mem::transmute_copy(&sequence_buffer) },
             enqueue_pos: AtomicUsize::new(0),
             dequeue_pos: AtomicUsize::new(0),
             _padding1: [0; CACHE_LINE_SIZE],
@@ -60,13 +53,15 @@ where
 
     pub fn push(&self, value: T) -> Result<(), T> {
         let mut pos = self.enqueue_pos.load(Ordering::Relaxed);
-        let mut unsafe_cell_ref;
+        let mut unsafe_slot_ref;
+        let mut sequence_ref;
 
         loop {
-            let index = pos & self.buffer_mask;
-            unsafe_cell_ref = unsafe { &mut (*self.buffer.get()).as_mut()[index] };
+            let index = pos & Self::BUFFER_MASK;
+            unsafe_slot_ref = unsafe { &mut (*self.buffer.get()).as_mut()[index] };
+            sequence_ref = &self.sequence_buffer[index];
 
-            let sequence = unsafe_cell_ref.sequence.load(Ordering::Acquire);
+            let sequence = sequence_ref.load(Ordering::Acquire);
             let diff = sequence as isize - pos as isize;
 
             match diff {
@@ -87,21 +82,23 @@ where
             }
         }
 
-        unsafe_cell_ref.data.write(value);
-        unsafe_cell_ref.sequence.store(pos + 1, Ordering::Release);
+        unsafe_slot_ref.write(value);
+        sequence_ref.store(pos + 1, Ordering::Release);
 
         Ok(())
     }
 
     pub fn pop(&self) -> Option<T> {
         let mut pos = self.dequeue_pos.load(Ordering::Relaxed);
-        let mut unsafe_cell_ref;
+        let mut unsafe_slot_ref;
+        let mut sequence_ref;
 
         loop {
-            let index = pos & self.buffer_mask;
-            unsafe_cell_ref = unsafe { &mut (*self.buffer.get()).as_mut()[index] };
+            let index = pos & Self::BUFFER_MASK;
+            unsafe_slot_ref = unsafe { &mut (*self.buffer.get()).as_mut()[index] };
+            sequence_ref = &self.sequence_buffer[index];
 
-            let sequence = unsafe_cell_ref.sequence.load(Ordering::Acquire);
+            let sequence = sequence_ref.load(Ordering::Acquire);
             let diff = sequence as isize - (pos as isize + 1);
 
             match diff {
@@ -122,26 +119,13 @@ where
         }
 
         let mut data = MaybeUninit::uninit();
-        swap(&mut data, &mut unsafe_cell_ref.data);
+        swap(&mut data, unsafe_slot_ref);
 
-        unsafe_cell_ref.sequence.store(pos + self.buffer_mask + 1, Ordering::Release);
+        sequence_ref.store(pos + Self::BUFFER_MASK + 1, Ordering::Release);
 
         Some(unsafe { data.assume_init() })
     }
 }
-
-impl<T, const SIZE: usize> BoundedQueue<[Slot<T>; SIZE], T> {
-    const SIZE_OK: () = assert!((SIZE >= 2) && ((SIZE & (SIZE - 1)) == 0));
-
-    // TODO: make this function const
-    pub fn new_inline() -> Self {
-        let _: () =  Self::SIZE_OK ;
-        Self::new_and_init(array_init(|| Slot::new_uninit()))
-    }
-}
-
-/// A [`BoundQueue`] with a array as storage.
-pub type ArrayBoundQueue<const SIZE: usize, T> = BoundedQueue<[Slot<T>; SIZE], T>;
 
 #[cfg(test)]
 mod tests {
@@ -150,33 +134,31 @@ mod tests {
 
     #[test_case]
     fn test_push_pop() {
-        let queue = ArrayBoundQueue::<64, _>::new_inline();
+        let queue = BoundedQueue::<64, i32>::new();
         assert_eq!(Ok(()), queue.push(300));
         assert_eq!(Some(300), queue.pop());
     }
 
     #[test_case]
     fn test_pop_empty() {
-        let queue = ArrayBoundQueue::<64, i32>::new_inline();
+        let queue = BoundedQueue::<64, i32>::new();
         assert_eq!(None, queue.pop());
         assert_eq!(None, queue.pop());
     }
 
     #[test_case]
     fn test_push_full() {
-        let queue = ArrayBoundQueue::<2, i32>::new_inline();
+        let queue = BoundedQueue::<64, i32>::new();
         assert_eq!(Ok(()), queue.push(100));
         assert_eq!(Err(200), queue.push(200));
     }
 
     #[test_case]
     fn test_push_full_pop_empty() {
-        let queue = ArrayBoundQueue::<2, i32>::new_inline();
+        let queue = BoundedQueue::<64, i32>::new();
         assert_eq!(Ok(()), queue.push(100));
         assert_eq!(Err(200), queue.push(200));
         assert_eq!(Some(100), queue.pop());
         assert_eq!(None, queue.pop());
     }
 }
-
-

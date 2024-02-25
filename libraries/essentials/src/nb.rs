@@ -9,6 +9,6 @@
 //!    are no other threads interfering. System starvation might occur but can be resolved by
 //!    external mechanisms.
 
-pub mod bounded_queue;
+mod bounded_queue;
 
-pub use bounded_queue::ArrayBoundQueue;
+pub use bounded_queue::BoundedQueue;

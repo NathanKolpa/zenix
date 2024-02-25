@@ -1,6 +1,8 @@
 #![feature(custom_test_frameworks)]
 #![test_runner(crate::runner)]
 
+use std::io::{stdout, Write};
+
 const TEST_NAME_ALIGN_TO: usize = 100;
 
 pub trait TestCase {
@@ -19,6 +21,7 @@ where
             "  ({test_number:0<2}/{test_count:0<2}) => {test_name}...{: <1$}",
             "", padding
         );
+        stdout().flush().unwrap();
         self();
         println!("[ok]");
     }

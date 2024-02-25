@@ -96,6 +96,15 @@ impl<Data, Access> Port<Data, Access> {
     {
         Data::read(self.port)
     }
+
+    #[inline]
+    pub unsafe fn read_atomic(&self) -> Data
+    where
+        Access: ReadAccessMarker,
+        Data: ReadPort,
+    {
+        Data::read(self.port)
+    }
 }
 
 impl ReadPort for u8 {

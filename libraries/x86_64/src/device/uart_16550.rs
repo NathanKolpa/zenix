@@ -1,4 +1,4 @@
-use crate::port::*;
+use crate::{device::Serial, port::*};
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 #[repr(u8)]
@@ -13,15 +13,6 @@ pub struct Uart16550 {
     line_control: Port<u8, WriteOnly>,
     modem_ctrl: Port<u8, WriteOnly>,
     line_status: Port<u8, ReadOnly>,
-}
-
-impl core::fmt::Write for Uart16550 {
-    fn write_str(&mut self, s: &str) -> core::fmt::Result {
-        for byte in s.bytes() {
-            self.write(byte)
-        }
-        Ok(())
-    }
 }
 
 impl Uart16550 {
@@ -66,11 +57,23 @@ impl Uart16550 {
             self.modem_ctrl.write(0x0B);
 
             // Enable  interrupts
-            // self.interrupts_enabled.write(0x01);
+            self.interrupts_enabled.write(0x02);
         }
     }
 
-    fn write(&mut self, byte: u8) {
+    unsafe fn wait_for(&mut self, status_flag: LineStatusFlags) {
+        while (self.line_status.read() & status_flag as u8) == 0 {
+            core::hint::spin_loop();
+        }
+    }
+}
+
+impl Serial for Uart16550 {
+    fn write_available(&self) -> bool {
+        unsafe { self.line_status.read_atomic() & LineStatusFlags::OutputEmpty as u8 != 0 }
+    }
+
+    fn write_byte(&mut self, byte: u8) {
         unsafe {
             match byte {
                 8 | 0x7F => {
@@ -88,12 +91,6 @@ impl Uart16550 {
                     self.data.write(byte);
                 }
             }
-        }
-    }
-
-    unsafe fn wait_for(&mut self, status_flag: LineStatusFlags) {
-        while (self.line_status.read() & status_flag as u8) == 0 {
-            core::hint::spin_loop();
         }
     }
 }

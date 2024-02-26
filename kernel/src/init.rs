@@ -5,16 +5,17 @@ use crate::memory::{
     alloc::{kernel_alloc::KERNEL_ALLOC, MemoryInfo, FRAME_ALLOC},
     map::mapper::MemoryMapper,
 };
-use crate::{arch, debug_println};
+
+use crate::{arch, debug_println, info_println};
 
 fn print_info(boot_info: &BootInfo) {
-    debug_println!("Staring the Zenix operating system...");
-    debug_println!("Architecture: {}", arch::NAME);
-    debug_println!("Debug channel: {}", crate::log::CHANNEL_NAME);
+    info_println!("Staring the Zenix operating system...");
+    info_println!("Architecture: {}", arch::NAME);
+    info_println!("Debug channel: {}", crate::log::CHANNEL_NAME);
     if let Some(bootloader_name) = boot_info.bootloader_name() {
-        debug_println!("Bootloader: {bootloader_name}");
+        info_println!("Bootloader: {bootloader_name}");
     }
-    debug_println!("{}", MemoryInfo::from_boot_info(boot_info));
+    info_println!("{}", MemoryInfo::from_boot_info(boot_info));
 }
 
 /// Initialize and start the operating system.

@@ -2,7 +2,7 @@ use essentials::{nb::BoundedQueue, spin::SpinLock};
 use x86_64::{device::Serial, interrupt::without_interrupts, RFlags};
 
 pub struct SerialChannel<C> {
-    queue: BoundedQueue<2, u8>,
+    queue: BoundedQueue<1024, u8>,
     serial: SpinLock<C>,
 }
 
@@ -31,10 +31,10 @@ where
 
     fn write_to_queue(&self, byte: u8) {
         without_interrupts(|| {
-            self.queue.spin_block_push(byte);
+            self.flush_availible();
         });
 
-        self.flush_availible();
+        self.queue.spin_block_push(byte);
     }
 
     fn write_blocking(&self, byte: u8) {

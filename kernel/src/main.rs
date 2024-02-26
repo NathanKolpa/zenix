@@ -27,7 +27,7 @@ use bootinfo::{BootInfo, BootInfoData};
 #[cfg(not(test))]
 #[panic_handler]
 fn panic(info: &PanicInfo) -> ! {
-    debug_println!("{info}");
+    error_println!("{info}");
     x86_64::halt_loop();
 }
 

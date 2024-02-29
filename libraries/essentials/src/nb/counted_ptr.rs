@@ -1,5 +1,28 @@
 use core::sync::atomic::{AtomicPtr, Ordering};
 
+#[derive(Debug, Clone, Copy, PartialEq, Eq, PartialOrd, Ord)]
+pub struct CountedPtrVal<T> {
+    ptr: *mut T,
+    count: usize,
+}
+
+impl<T> CountedPtrVal<T> {
+    pub fn next(self, new_ptr: *mut T) -> Self {
+        Self {
+            ptr: new_ptr,
+            count: self.count + 1,
+        }
+    }
+
+    pub fn ptr(&self) -> *const T {
+        self.ptr
+    }
+
+    pub fn mut_ptr(&self) -> *mut T {
+        self.ptr
+    }
+}
+
 pub struct CountedPtr<T> {
     ptr: AtomicPtr<T>,
 }
@@ -33,6 +56,11 @@ impl<T> CountedPtr<T> {
         (ptr as *mut T, count)
     }
 
+    fn decode_val(ptr: *mut T) -> CountedPtrVal<T> {
+        let (ptr, count) = Self::decode(ptr);
+        CountedPtrVal { ptr, count }
+    }
+
     #[cfg(target_arch = "x86_64")]
     fn apply_sign_ext(ptr: usize) -> usize {
         let extended = ptr >> (Self::PTR_N_BITS - 1);
@@ -45,14 +73,24 @@ impl<T> CountedPtr<T> {
         }
     }
 
+    pub fn load(&self, order: Ordering) -> CountedPtrVal<T> {
+        Self::decode_val(self.ptr.load(order))
+    }
+
     pub fn compare_exchange(
         &self,
-        current: *mut T,
-        new: *mut T,
+        current: CountedPtrVal<T>,
+        new: CountedPtrVal<T>,
         success: Ordering,
         failure: Ordering,
-    ) -> Result<*mut T, *mut T> {
-        self.ptr.compare_exchange(current, new, success, failure)
+    ) -> Result<CountedPtrVal<T>, CountedPtrVal<T>> {
+        let encoded_current = Self::encode(current.ptr, current.count);
+        let encoded_new = Self::encode(new.ptr, new.count);
+
+        self.ptr
+            .compare_exchange_weak(encoded_current, encoded_new, success, failure)
+            .map(Self::decode_val)
+            .map_err(Self::decode_val)
     }
 }
 

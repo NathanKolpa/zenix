@@ -11,4 +11,8 @@
 
 mod bounded_queue;
 
+#[cfg(feature = "alloc")]
+mod queue;
+mod counted_ptr;
+
 pub use bounded_queue::BoundedQueue;

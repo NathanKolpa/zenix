@@ -1,6 +1,7 @@
 //! Simple containers and primitives.
 
 #![cfg_attr(not(test), no_std)]
+#![feature(allocator_api)]
 #![feature(custom_test_frameworks)]
 #![test_runner(test_runner::runner)]
 #![feature(doc_cfg)]
@@ -20,3 +21,6 @@ pub use bitmap::Bitmap;
 pub use fixed_vec::FixedVec;
 pub use panic_once::PanicOnce;
 pub use static_ptr::StaticPtr;
+
+#[cfg(feature = "alloc")]
+extern crate alloc;

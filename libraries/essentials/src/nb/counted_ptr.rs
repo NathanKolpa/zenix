@@ -1,9 +1,26 @@
-use core::sync::atomic::{AtomicPtr, Ordering};
+use core::{
+    ptr::null_mut,
+    sync::atomic::{AtomicPtr, Ordering},
+};
 
-#[derive(Debug, Clone, Copy, PartialEq, Eq, PartialOrd, Ord)]
+#[derive(Debug, Eq, PartialOrd, Ord)]
 pub struct CountedPtrVal<T> {
     ptr: *mut T,
     count: usize,
+}
+
+impl<T> Copy for CountedPtrVal<T> {}
+
+impl<T> Clone for CountedPtrVal<T> {
+    fn clone(&self) -> Self {
+        *self
+    }
+}
+
+impl<T> PartialEq for CountedPtrVal<T> {
+    fn eq(&self, other: &Self) -> bool {
+        self.ptr == other.ptr && self.count == other.count
+    }
 }
 
 impl<T> CountedPtrVal<T> {
@@ -12,6 +29,10 @@ impl<T> CountedPtrVal<T> {
             ptr: new_ptr,
             count: self.count + 1,
         }
+    }
+
+    pub fn inc(self) -> Self {
+        self.next(self.mut_ptr())
     }
 
     pub fn ptr(&self) -> *const T {
@@ -23,13 +44,14 @@ impl<T> CountedPtrVal<T> {
     }
 }
 
+/// A single (atomic) word containing a pointer + counter.
 pub struct CountedPtr<T> {
     ptr: AtomicPtr<T>,
 }
 
 impl<T> CountedPtr<T> {
     #[cfg(not(target_arch = "x86_64"))]
-    const PTR_N_BITS: usize = core::mem::size_of::<usize>() * 8;
+    const PTR_N_BITS: usize = core::mem::size_of::<usize>() * 8 - 1;
 
     #[cfg(target_arch = "x86_64")]
     const PTR_N_BITS: usize = 48;
@@ -67,9 +89,15 @@ impl<T> CountedPtr<T> {
         ptr | (Self::VALUE_MASK * extended)
     }
 
-    pub fn new(ptr: *mut T, count: usize) -> Self {
+    pub const fn null() -> Self {
         Self {
-            ptr: AtomicPtr::new(Self::encode(ptr, count)),
+            ptr: AtomicPtr::new(null_mut()),
+        }
+    }
+
+    pub fn new(ptr: *mut T) -> Self {
+        Self {
+            ptr: AtomicPtr::new(Self::encode(ptr, 0)),
         }
     }
 
@@ -88,7 +116,7 @@ impl<T> CountedPtr<T> {
         let encoded_new = Self::encode(new.ptr, new.count);
 
         self.ptr
-            .compare_exchange_weak(encoded_current, encoded_new, success, failure)
+            .compare_exchange(encoded_current, encoded_new, success, failure)
             .map(Self::decode_val)
             .map_err(Self::decode_val)
     }
@@ -112,7 +140,7 @@ mod tests {
     #[test_case]
     fn test_encode_decode() {
         let ptr = 0xdeadbeef as *mut ();
-        let count = 128;
+        let count = 127;
 
         let encoded = CountedPtr::encode(ptr, count);
         let (decoded_ptr, decoded_count) = CountedPtr::decode(encoded);
@@ -144,5 +172,55 @@ mod tests {
 
         assert_eq!(count, decoded_count);
         assert_eq!(ptr, decoded_ptr);
+    }
+
+    #[test_case]
+    fn test_next() {
+        let val = CountedPtrVal {
+            ptr: 0xdeadbeef as *mut (),
+            count: 0,
+        };
+
+        let new = val.next(0xbadb1d as *mut ());
+
+        assert_ne!(val, new);
+        assert_eq!(new.ptr(), 0xbadb1d as *const ());
+        assert_eq!(new.count, 1);
+    }
+
+    #[test_case]
+    fn test_inc() {
+        let val = CountedPtrVal {
+            ptr: 0xdeadbeef as *mut (),
+            count: 0,
+        };
+
+        let new = val.inc();
+
+        assert_ne!(val, new);
+        assert_eq!(new.count, 1);
+    }
+
+    #[test_case]
+    fn test_compare_exchange() {
+        let ptr = 0xdeadbeef as *mut ();
+
+        let counted = CountedPtr::new(ptr);
+
+        let loaded = counted.load(Ordering::SeqCst);
+
+        assert_eq!(ptr, loaded.mut_ptr());
+        assert_eq!(0, loaded.count);
+
+        let new = loaded.inc();
+        assert_ne!(new, loaded);
+
+        let new_result =
+            counted.compare_exchange(loaded, loaded.inc(), Ordering::SeqCst, Ordering::Relaxed);
+
+        assert!(new_result.is_ok());
+
+        let failed = counted.compare_exchange(loaded, loaded, Ordering::SeqCst, Ordering::SeqCst);
+        assert!(failed.is_err());
     }
 }

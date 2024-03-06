@@ -95,9 +95,9 @@ impl<T> CountedPtr<T> {
         }
     }
 
-    pub fn new(ptr: *mut T) -> Self {
+    pub const fn new(ptr: *mut T) -> Self {
         Self {
-            ptr: AtomicPtr::new(Self::encode(ptr, 0)),
+            ptr: AtomicPtr::new(ptr),
         }
     }
 
@@ -222,5 +222,27 @@ mod tests {
 
         let failed = counted.compare_exchange(loaded, loaded, Ordering::SeqCst, Ordering::SeqCst);
         assert!(failed.is_err());
+    }
+
+    #[test_case]
+    fn test_inc_lots() {
+        let ptr = 0xdeadbeef as *mut ();
+        let counted = CountedPtr::new(ptr);
+        let mut current = counted.load(Ordering::SeqCst);
+        let count = 1000;
+
+        for expected_count in 0..count {
+            let next = current.inc();
+
+            let prev = counted
+                .compare_exchange(current, next, Ordering::SeqCst, Ordering::Relaxed)
+                .unwrap();
+
+            assert_eq!(next.count, prev.count + 1);
+            assert_eq!(next.count, expected_count + 1);
+            assert_eq!(ptr, current.mut_ptr());
+
+            current = next;
+        }
     }
 }

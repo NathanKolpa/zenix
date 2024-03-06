@@ -1,4 +1,3 @@
-use crate::log;
 use crate::{arch::CpuContext, multitasking::SCHEDULER};
 use crate::{log, warning_println};
 
@@ -14,3 +13,6 @@ pub fn tick(current_context: CpuContext) -> CpuContext {
     todo!()
 }
 
+pub fn unhandled_irq() {
+    warning_println!("Unhandled IRQ");
+}

@@ -38,6 +38,8 @@ where
     }
 
     fn write_blocking(&self, byte: u8) {
+        self.flush_availible();
+
         while self.queue.push(byte).is_err() {
             self.flush_availible();
         }

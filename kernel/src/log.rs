@@ -30,7 +30,7 @@ macro_rules! info_println {
 /// Anything that can potentially cause application oddities, but for which I am automatically recovering.
 #[macro_export]
 macro_rules! warning_print {
-    ($($arg:tt)*) => ($crate::log::_channel_print($crate::log::LogLevel::Warn, fformat_args!($($arg)*)));
+    ($($arg:tt)*) => ($crate::log::_channel_print($crate::log::LogLevel::Warn, format_args!($($arg)*)));
 }
 
 /// Anything that can potentially cause application oddities, but for which I am automatically recovering.

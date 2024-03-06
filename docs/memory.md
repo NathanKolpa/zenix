@@ -37,7 +37,7 @@ An example of how 344.0 KiB looks in a zone when initialized:
 
 ### Allocation
 
-First, the size of the request is rounded up to the next nearest power of two. For example, if a request for 5000 bytes is made, the allocation is rounded up to 8192 bytes. The corresponding level is then determined upon the new size.
+First, the size of the request is rounded up to the next nearest power of two. For example, if a request for 5000 bytes is made, the allocation is rounded up to 8192 bytes. The corresponding level is then determined based on the new size.
 
 If it's possible to pop a block of memory from the level's freelist, it is marked as used in the bitmap, and the request can be satisfied using (the address of) this block. If there is no available block of memory in the freelist, a recursive attempt is made to allocate a block in the level above. When the level above returns a block (exactly twice the size needed), the block is split in half. The first half is added to the freelist, and the second half is marked as used in the bitmap. Subsequently, the request is fulfilled using the second half.
 
@@ -47,7 +47,7 @@ Before its possible to start the de-allocation process we need to figure out the
 This can be done by checking for each level (from small to large) if the block is marked as used.
 If the block is used, then the level's size is our de-allocation size.
 
-Using the size, we get the corresponding level. In the level's bitmap we mark the block of memory as unused. If the the block's buddy is also unused, we can coalesce the two blocks so in the future larger requests can be satisfied. We achieve this by removing the buddy block from the freelist. Then we recursively deallocate for the next level. If it is not possible to coalesce a block we add it to the level's freelist.
+Using this size, we get the corresponding level. In the level's bitmap, we then mark the block of memory as unused. If the the block's buddy is also unused, we can coalesce the two blocks so in the future larger requests can be satisfied. We achieve this by removing the buddy block from the freelist. Then we recursively deallocate for the next level. If it is not possible to coalesce a block we add it to the level's freelist.
 
 
 ## Virtual Memory

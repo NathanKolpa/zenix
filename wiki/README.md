@@ -5,7 +5,7 @@ Help:
 
 ---
 
-High Level Documentation:
+The kernel:
 * [Introduction](./introduction.md)
 * [Booting](./boot.md)
 * [Building](./build.md)

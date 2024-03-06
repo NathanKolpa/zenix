@@ -9,3 +9,5 @@ High Level Documentation:
 * [Introduction](./introduction.md)
 * [Booting](./boot.md)
 * [Building](./build.md)
+* [Memory](./memory.md)
+* [Concurrency](./concurrency.md)

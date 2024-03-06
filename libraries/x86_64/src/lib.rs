@@ -26,6 +26,10 @@ mod rflags;
 pub mod segmentation;
 mod tables;
 
+#[cfg(target_arch = "x86_64")]
+#[doc(cfg(target_arch = "x86_64"))]
+pub mod cpuid;
+
 #[cfg(any(target_arch = "x86_64", target_arch = "x86"))]
 #[doc(cfg(any(target_arch = "x86_64", target_arch = "x86")))]
 pub use halt::*;

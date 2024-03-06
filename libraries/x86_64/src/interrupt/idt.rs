@@ -84,6 +84,14 @@ impl InterruptDescriptorTable {
             pointer.load_interrupt_table();
         }
     }
+
+    pub fn isr_iter_mut(&mut self) -> core::slice::IterMut<'_, GateDescriptor<Isr>> {
+        self.interrupts.iter_mut()
+    }
+
+    pub fn isr_iter(&self) -> core::slice::Iter<'_, GateDescriptor<Isr>> {
+        self.interrupts.iter()
+    }
 }
 
 impl Index<usize> for InterruptDescriptorTable {

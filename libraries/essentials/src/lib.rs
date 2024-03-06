@@ -1,6 +1,7 @@
 //! Simple containers and primitives.
 
 #![cfg_attr(not(test), no_std)]
+#![feature(const_mut_refs)]
 #![feature(custom_test_frameworks)]
 #![test_runner(test_runner::runner)]
 #![feature(doc_cfg)]

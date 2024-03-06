@@ -14,16 +14,10 @@ That's it! You can now build the project. However, you'll most likely want to ru
 pacman -S qemu-system-x86_64 qemu-ui-gtk
 ```
 
-## Debian
+### Debian
 
 ```bash
 apt install qemu-system-x86_64 qemu-system-gui
-```
-
-## Building
-
-```bash
-cargo build --release
 ```
 
 ## Running

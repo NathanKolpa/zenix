@@ -1,9 +1,13 @@
 use bootinfo::BootInfo;
 use x86_64::interrupt::enable_interrupts;
 
-use crate::memory::{
-    alloc::{kernel_alloc::KERNEL_ALLOC, MemoryInfo, FRAME_ALLOC},
-    map::mapper::MemoryMapper,
+use crate::{
+    info_print,
+    memory::{
+        alloc::{kernel_alloc::KERNEL_ALLOC, MemoryInfo, FRAME_ALLOC},
+        map::mapper::MemoryMapper,
+    },
+    multitasking::{scheduler::LOWEST_PRIORITY, SCHEDULER},
 };
 
 use crate::{arch, debug_println, info_println};
@@ -15,7 +19,7 @@ fn print_info(boot_info: &BootInfo) {
     if let Some(bootloader_name) = boot_info.bootloader_name() {
         info_println!("Bootloader: {bootloader_name}");
     }
-    info_println!("{}", MemoryInfo::from_boot_info(boot_info));
+    info_print!("{}", MemoryInfo::from_boot_info(boot_info));
 }
 
 /// Initialize and start the operating system.
@@ -37,13 +41,27 @@ pub unsafe fn init(boot_info: &BootInfo) {
         heap.size as usize,
     ));
 
+    debug_println!("Kernel heap initialized");
+
     FRAME_ALLOC.init_with(
         boot_info.usable_memory(),
         boot_info.physycal_memory_offset(),
     );
 
-    let _root_mapper = MemoryMapper::new_root_mapper(boot_info.physycal_memory_offset());
+    debug_println!("FRAME_ALLOC initialized");
 
-    enable_interrupts();
+    let mut root_mapper = MemoryMapper::new_root_mapper(boot_info.physycal_memory_offset());
+    root_mapper.share_all();
+
+    debug_println!("Virtual memory initialized");
+
+    SCHEDULER.init();
+    let kernel_tid = SCHEDULER
+        .current_as_thread(LOWEST_PRIORITY)
+        .expect("calling current_as_thread should never fail in init()");
+
+    debug_println!("Scheduler initialized; kernel thread id: {kernel_tid}");
+
     debug_println!("Graceull exit");
+    enable_interrupts();
 }

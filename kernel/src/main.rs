@@ -5,6 +5,8 @@
 #![reexport_test_harness_main = "test_main"]
 #![feature(doc_cfg)]
 #![feature(abi_x86_interrupt)]
+#![feature(naked_functions)]
+#![feature(allocator_api)]
 #![feature(const_mut_refs)]
 // TODO: remove when the kernel gets sufficiently complete.
 #![allow(dead_code)]
@@ -16,8 +18,11 @@ pub mod init;
 pub mod interface;
 pub mod log;
 pub mod memory;
+pub mod multitasking;
+
 #[cfg(test)]
 pub mod testing;
+mod utils;
 
 use core::panic::PanicInfo;
 
@@ -50,5 +55,17 @@ extern "C" fn kernel_main(boot_info_ptr: *const BootInfoData) -> ! {
     #[cfg(test)]
     test_main();
 
-    x86_64::halt_loop();
+    run()
+}
+
+fn run() -> ! {
+    use x86_64::interrupt::*;
+
+    loop {
+        disable_interrupts();
+
+        // Do work mabye..
+
+        enable_interrupts_and_halt();
+    }
 }

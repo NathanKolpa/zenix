@@ -1,4 +1,6 @@
-use crate::interface::interrupts;
+use crate::wrap_isr;
+
+use crate::interface::interrupts as kernel_interface;
 
 use super::gdt::*;
 use essentials::spin::{Singleton, SpinLock};
@@ -15,18 +17,32 @@ extern "x86-interrupt" fn double_fault_handler(frame: InterruptStackFrame, _erro
 }
 
 extern "x86-interrupt" fn uart_status_change_isr(_frame: InterruptStackFrame) {
-    interrupts::uart_status_change();
+    kernel_interface::uart_status_change();
 }
 
-extern "x86-interrupt" fn tick_isr(_frame: InterruptStackFrame) {
+fn tick_isr(ctx_ptr: *const InterruptedContext) -> InterruptedContext {
+    let ctx = unsafe { (*ctx_ptr).clone() };
+
     PIC_CHAIN
         .lock()
         .end_of_interrupt(PIC_CHAIN_TICK_INT_INDEX as u8);
+
+    kernel_interface::tick(ctx)
+}
+
+wrap_isr!(tick_isr, tick_isr_handler);
+
+extern "x86-interrupt" fn unhandled_isr(_frame: InterruptStackFrame) {
+    kernel_interface::unhandled_irq()
 }
 
 fn init_idt() -> InterruptDescriptorTable {
     let kernel_segment = GDT.kernel_code;
     let mut idt = InterruptDescriptorTable::new();
+
+    for isr in idt.isr_iter_mut() {
+        isr.set_handler(kernel_segment, unhandled_isr)
+    }
 
     idt.double_fault
         .set_handler(kernel_segment, double_fault_handler);
@@ -35,7 +51,7 @@ fn init_idt() -> InterruptDescriptorTable {
     idt[InterruptDescriptorTable::STANDARD_INTERRUPTS_COUNT + 0x04]
         .set_handler(kernel_segment, uart_status_change_isr);
 
-    idt[PIC_CHAIN_TICK_INT_INDEX].set_handler(kernel_segment, tick_isr);
+    idt[PIC_CHAIN_TICK_INT_INDEX].set_handler(kernel_segment, tick_isr_handler);
 
     idt
 }

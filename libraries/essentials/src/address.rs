@@ -95,6 +95,12 @@ impl<L> Address<L> {
     }
 }
 
+impl<L> Default for Address<L> {
+    fn default() -> Self {
+        Self::null()
+    }
+}
+
 /// A wrapper for physical addresses.
 impl Address<PhysicalAddressMarker> {
     pub fn align_down(&self, align: usize) -> Self {

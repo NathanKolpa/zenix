@@ -16,6 +16,6 @@ Finally, the Pre-kernel can call `kernel_main` and the actual Kernel starts runn
 
 ## Kernel
 
-When the Pre kernel is done, there is a lot of memory left within bump memory. The kernel makes use of this by repurposing whatever is left as the kernel heap. This makrs the final stage of the bump memory.
+When the Pre kernel is done, there is a lot of memory left within bump memory. The kernel makes use of this by repurposing whatever is left as the kernel heap. This marks the final stage of the bump memory.
 
 ![Bump Memory](./diagrams/bump-memory/bm.svg)

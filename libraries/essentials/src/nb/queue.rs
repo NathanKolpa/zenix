@@ -109,7 +109,7 @@ impl<T> Queue<T> {
         }
     }
 
-    pub fn push(&mut self, new_node: &'static mut QueueNode<T>) {
+    pub fn push(&self, new_node: &'static mut QueueNode<T>) {
         // Set next pointer of node to NULL
         new_node.next = CountedPtr::null();
 
@@ -164,7 +164,7 @@ impl<T> Queue<T> {
         );
     }
 
-    pub fn pop(&mut self) -> Option<&'static mut QueueNode<T>> {
+    pub fn pop(&self) -> Option<&'static mut QueueNode<T>> {
         // Keep trying until Dequeue is done
         loop {
             //  Read Head
@@ -201,7 +201,7 @@ impl<T> Queue<T> {
                     // Changed: The rust typesystem guarantees that the next node lives longer that
                     // the queue.
 
-                    let next_ptr = next.mut_ptr();
+                    let next_val = unsafe { &mut *next.mut_ptr() };
 
                     // Try to swing Head to the next node
                     if self
@@ -214,8 +214,10 @@ impl<T> Queue<T> {
                         )
                         .is_ok()
                     {
+                        core::mem::swap(&mut next_val.value, &mut head_node.value);
+
                         // Dequeue is done. Exit loop
-                        return Some(unsafe { &mut *next_ptr });
+                        return Some(head_node);
                     }
                 }
             }
@@ -231,7 +233,7 @@ mod tests {
     #[test_case]
     fn test_pop_empty() {
         let dummy = Box::leak(Box::new(DummyNode::new()));
-        let mut queue = Queue::<u8>::new(dummy);
+        let queue = Queue::<u8>::new(dummy);
 
         assert_eq!(None, queue.pop().map(|x| **x));
     }
@@ -241,7 +243,7 @@ mod tests {
         let dummy = Box::leak(Box::new(DummyNode::new()));
         let node_1 = Box::leak(Box::new(QueueNode::new(123)));
 
-        let mut queue = Queue::new(dummy);
+        let queue = Queue::new(dummy);
         queue.push(node_1);
 
         let pop = queue.pop();
@@ -256,7 +258,7 @@ mod tests {
         let node_1 = Box::leak(Box::new(QueueNode::new(123)));
         let node_2 = Box::leak(Box::new(QueueNode::new(321)));
 
-        let mut queue = Queue::new(dummy);
+        let queue = Queue::new(dummy);
         queue.push(node_1);
         queue.push(node_2);
 
@@ -267,5 +269,20 @@ mod tests {
         assert_eq!(Some(321), pop.map(|x| **x));
 
         assert_eq!(None, queue.pop().map(|x| **x));
+    }
+
+    #[test_case]
+    fn test_push_pop_reuse() {
+        let dummy = Box::leak(Box::new(DummyNode::new()));
+        let node_1 = Box::leak(Box::new(QueueNode::new(123)));
+
+        let queue = Queue::new(dummy);
+
+        queue.push(node_1);
+        let node_1 = queue.pop().unwrap();
+        assert_eq!(123, **node_1);
+
+        queue.push(node_1);
+        assert_eq!(123, **queue.pop().unwrap());
     }
 }

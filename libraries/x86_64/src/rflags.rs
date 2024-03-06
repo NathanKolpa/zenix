@@ -1,5 +1,5 @@
 #[repr(transparent)]
-#[derive(Debug, Copy, Clone)]
+#[derive(Debug, Copy, Clone, Default)]
 pub struct RFlags {
     value: u64,
 }

@@ -25,7 +25,7 @@ pub struct RegisterContext {
 
 /// All data that gets pushed on the stack in an interrupt handler.
 #[repr(C)]
-#[derive(Debug, Clone)]
+#[derive(Debug, Clone, Default)]
 pub struct InterruptStackFrame {
     pub instruction_pointer: VirtualAddress,
     pub code_segment: u64,
@@ -52,7 +52,7 @@ impl InterruptStackFrame {
     }
 }
 
-#[derive(Clone, Debug)]
+#[derive(Clone, Debug, Default)]
 #[repr(C)]
 pub struct InterruptedContext {
     pub registers: RegisterContext,

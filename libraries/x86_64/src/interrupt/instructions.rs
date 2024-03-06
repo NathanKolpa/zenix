@@ -38,3 +38,11 @@ pub fn without_interrupts<F: FnOnce() -> R, R>(callback: F) -> R {
 
     ret
 }
+
+#[cfg(target_arch = "x86_64")]
+#[doc(cfg(target_arch = "x86_64"))]
+pub fn enable_interrupts_and_halt() {
+    unsafe {
+        asm!("sti; hlt", options(nomem, nostack));
+    }
+}

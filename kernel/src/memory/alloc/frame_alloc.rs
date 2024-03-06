@@ -33,7 +33,7 @@ use alloc::vec::Vec;
 use bootinfo::MemoryRegion;
 use zone::Zone;
 
-#[allow(unused_imports)] // Used the module's doc.
+#[cfg(doc)]
 use level::Level;
 
 use essentials::address::PhysicalAddress;

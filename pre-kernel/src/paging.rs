@@ -70,7 +70,7 @@ pub fn setup_paging<'a>(
 ) -> Result<&'static mut PageTable, PagingSetupError> {
     let l4_table = new_empty_page_table(bump_memory);
 
-    let mut map = |offset: i64, no_exec: bool, writable: bool, start: u64, len: u64| {
+    let mut map = |offset: i64, no_exec: bool, writable: bool, mmio: bool, start: u64, len: u64| {
         map_phys_range(
             bump_memory,
             l4_table,
@@ -78,6 +78,7 @@ pub fn setup_paging<'a>(
             0,
             no_exec,
             writable,
+            mmio,
             3,
             start,
             len,
@@ -89,7 +90,7 @@ pub fn setup_paging<'a>(
         let addr = mm_entry.addr();
         let len = mm_entry.size();
 
-        map(PHYS_MEM_OFFSET, true, true, addr, len);
+        map(PHYS_MEM_OFFSET, true, true, false, addr, len);
     }
 
     let known_regions = known_regions();
@@ -99,12 +100,20 @@ pub fn setup_paging<'a>(
             0,
             !region.executable,
             region.writable,
+            region.mmio,
             region.start,
             region.size,
         );
     }
 
-    map(0, true, true, kernel.addr() as u64, kernel.len() as u64);
+    map(
+        0,
+        true,
+        true,
+        false,
+        kernel.addr() as u64,
+        kernel.len() as u64,
+    );
 
     Ok(l4_table)
 }
@@ -170,6 +179,7 @@ fn map_sections<'a>(
             phys_offset,
             no_exec,
             writable,
+            false,
             3,
             virt_addr,
             file_len,
@@ -196,6 +206,7 @@ fn map_sections<'a>(
                 backing_offset,
                 no_exec,
                 writable,
+                false,
                 3,
                 bss_addr_aligned,
                 bss_len_aligned,
@@ -275,6 +286,7 @@ fn map_phys_range(
     phys_offset: i64,
     no_exec: bool,
     writable: bool,
+    mmio: bool,
     level: u8,
     mut start: u64,
     mut len: u64,
@@ -309,7 +321,7 @@ fn map_phys_range(
         if let Some(level_page_size) = level_page_size.map(|x| x.as_usize() as u64) {
             if len >= level_page_size && addr % level_page_size == 0 {
                 let existing_flags = parent[index as usize].flags();
-                let mut merged_flags = flags.set_huge(level > 0);
+                let mut merged_flags = flags.set_huge(level > 0).set_no_cache(mmio);
 
                 let phys_addr = (start as i64 + phys_offset) as u64;
 
@@ -324,6 +336,10 @@ fn map_phys_range(
 
                     if existing_flags.writable() || writable {
                         merged_flags = merged_flags.set_writable(true);
+                    }
+
+                    if existing_flags.no_cache() || mmio {
+                        merged_flags = merged_flags.set_no_cache(true)
                     }
                 }
 
@@ -378,6 +394,7 @@ fn map_phys_range(
                 phys_offset,
                 no_exec,
                 writable,
+                mmio,
                 level - 1,
                 start,
                 len,

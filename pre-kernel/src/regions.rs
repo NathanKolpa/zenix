@@ -17,6 +17,7 @@ pub struct KnownRegion {
     pub size: u64,
     pub executable: bool,
     pub writable: bool,
+    pub mmio: bool,
 }
 
 pub fn known_regions() -> impl Iterator<Item = KnownRegion> + Clone {
@@ -26,6 +27,7 @@ pub fn known_regions() -> impl Iterator<Item = KnownRegion> + Clone {
             size: unsafe { &STACK_END as *const _ as u64 - (&STACK_START as *const _ as u64) },
             executable: false,
             writable: true,
+            mmio: false,
         },
         KnownRegion {
             start: unsafe { &PRE_KERNEL_START as *const _ as u64 },
@@ -34,6 +36,7 @@ pub fn known_regions() -> impl Iterator<Item = KnownRegion> + Clone {
             },
             executable: true,
             writable: true,
+            mmio: false,
         },
         KnownRegion {
             start: unsafe { &BUMP_MEMORY_START as *const _ as u64 },
@@ -42,12 +45,21 @@ pub fn known_regions() -> impl Iterator<Item = KnownRegion> + Clone {
             },
             executable: false,
             writable: true,
+            mmio: false,
         },
         KnownRegion {
             start: VGA_ADDR.as_u64(),
             size: VGA_LEN as u64,
             executable: false,
             writable: true,
+            mmio: true,
+        },
+        KnownRegion {
+            start: 0xFEE00000,
+            size: 0xFFF,
+            writable: true,
+            executable: false,
+            mmio: true,
         },
     ]
     .into_iter()

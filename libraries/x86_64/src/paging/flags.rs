@@ -24,6 +24,10 @@ impl PageTableEntryFlags {
         self.set_flag(0, enabled)
     }
 
+    pub const fn set_no_cache(&self, enabled: bool) -> Self {
+        self.set_flag(4, enabled)
+    }
+
     pub const fn set_huge(&self, enabled: bool) -> Self {
         self.set_flag(7, enabled)
     }
@@ -82,6 +86,10 @@ impl PageTableEntryFlags {
         self.value & (1 << 63) != 0
     }
 
+    pub const fn no_cache(&self) -> bool {
+        self.value & (1 << 4) != 0
+    }
+
     pub const fn huge(&self) -> bool {
         self.value & (1 << 7) != 0
     }
@@ -108,7 +116,7 @@ impl PageTableEntryFlags {
 
     pub const fn native_flags_eq(&self, rhs: Self) -> bool {
         const NATIVE_FLAGS_MASK: u64 =
-            (1 << 8) | (1 << 7) | (1 << 2) | (1 << 1) | (1 << 0) | (1 << 6) | (1 << 63);
+            (1 << 8) | (1 << 4) | (1 << 7) | (1 << 2) | (1 << 1) | (1 << 0) | (1 << 6) | (1 << 63);
 
         self.value & NATIVE_FLAGS_MASK == rhs.value & NATIVE_FLAGS_MASK
     }
@@ -136,7 +144,7 @@ impl core::ops::BitAnd for PageTableEntryFlags {
 
 impl Debug for PageTableEntryFlags {
     fn fmt(&self, f: &mut core::fmt::Formatter<'_>) -> core::fmt::Result {
-        let mut flags = FixedVec::<9, &'static str>::new();
+        let mut flags = FixedVec::<10, &'static str>::new();
 
         if self.present() {
             flags.push("PRESENT");
@@ -164,6 +172,10 @@ impl Debug for PageTableEntryFlags {
 
         if self.user_accessible() {
             flags.push("USER");
+        }
+
+        if self.no_cache() {
+            flags.push("NO_CACHE");
         }
 
         if self.custom::<0>() {

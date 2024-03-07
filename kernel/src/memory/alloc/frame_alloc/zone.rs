@@ -2,7 +2,7 @@ use alloc::vec::Vec;
 use core::cmp::max;
 use core::sync::atomic::{AtomicUsize, Ordering};
 
-use crate::memory::alloc::frame_alloc::level::Level;
+use crate::{memory::alloc::frame_alloc::level::Level, utils::InterruptGuard};
 use essentials::address::PhysicalAddress;
 use essentials::spin::SpinLock;
 
@@ -14,7 +14,7 @@ pub struct Zone {
     physical_memory_offset: usize,
 
     available: AtomicUsize,
-    levels: Vec<SpinLock<Level>>, // TODO: add this to the eternal alloc
+    levels: Vec<InterruptGuard<SpinLock<Level>>>, // TODO: add this to the eternal alloc
 }
 
 impl Zone {
@@ -36,7 +36,7 @@ impl Zone {
         let mut levels = Vec::with_capacity(level_count + 1);
 
         for order in MIN_ORDER..=largest_order {
-            levels.push(SpinLock::new(Level::new(
+            levels.push(InterruptGuard::new_lock(Level::new(
                 order,
                 largest_order,
                 addr_start,
@@ -57,7 +57,9 @@ impl Zone {
 
     fn level_allocate(&self, index: usize) -> Option<(PhysicalAddress, usize)> {
         let level = self.levels.get(index)?;
-        let mut level_lock = level.lock();
+
+        let level_lock = level.lock();
+        let mut level_lock = level_lock.lock();
 
         level_lock
             .pop_from_list_and_mark_as_used()
@@ -87,7 +89,8 @@ impl Zone {
 
         // holding on to all the locks is important.
         // we dont want to coalesce a block when another thread tries allocate.
-        let mut level_lock = self.levels[index].lock();
+        let level_lock = self.levels[index].lock();
+        let mut level_lock = level_lock.lock();
 
         let aligned_addr = addr.align_down(level_lock.block_size());
 
@@ -144,6 +147,7 @@ impl Zone {
             let aligned_addr = addr.align_down(block_size);
 
             let level_lock = level.lock();
+            let level_lock = level_lock.lock();
 
             if level_lock.is_within_allocated_block(aligned_addr) {
                 return index;
@@ -157,7 +161,7 @@ impl Zone {
         start: PhysicalAddress,
         memory_left: usize,
         order: u8,
-        levels: &mut [SpinLock<Level>],
+        levels: &mut [InterruptGuard<SpinLock<Level>>],
     ) {
         if order < MIN_ORDER || memory_left == 0 {
             return;
@@ -168,7 +172,7 @@ impl Zone {
         let next_order = order - 1;
 
         let level = &mut levels[Self::order_to_level_index(order)];
-        let level_lock = level.as_mut();
+        let level_lock = level.as_mut().as_mut();
 
         // a level needs exactly the order_size no less, if we can't satisfy that we should skip.
         if order_size > memory_left {

@@ -1,9 +1,11 @@
 use essentials::{nb::BoundedQueue, spin::SpinLock};
-use x86_64::{device::Serial, interrupt::without_interrupts, RFlags};
+use x86_64::{device::Serial, RFlags};
+
+use crate::utils::InterruptGuard;
 
 pub struct SerialChannel<C> {
     queue: BoundedQueue<1024, u8>,
-    serial: SpinLock<C>,
+    serial: InterruptGuard<SpinLock<C>>,
 }
 
 impl<C> SerialChannel<C>
@@ -12,7 +14,7 @@ where
 {
     pub const fn new(channel: C) -> Self {
         Self {
-            serial: SpinLock::new(channel),
+            serial: InterruptGuard::new_lock(channel),
             queue: BoundedQueue::new(),
         }
     }
@@ -30,10 +32,7 @@ where
     }
 
     fn write_to_queue(&self, byte: u8) {
-        without_interrupts(|| {
-            self.flush_availible();
-        });
-
+        self.flush_availible();
         self.queue.spin_block_push(byte);
     }
 
@@ -46,7 +45,8 @@ where
     }
 
     pub fn flush_availible(&self) {
-        let mut channel = self.serial.lock();
+        let channel = self.serial.lock();
+        let mut channel = channel.lock();
 
         loop {
             if !channel.write_available() {

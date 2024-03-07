@@ -1,4 +1,7 @@
 use essentials::spin::SpinLock;
 use x86_64::device::qemu::Qemu;
 
-pub static QEMU_DEVICE: SpinLock<Qemu> = SpinLock::new(unsafe { Qemu::new() });
+use crate::utils::InterruptGuard;
+
+pub static QEMU_DEVICE: InterruptGuard<SpinLock<Qemu>> =
+    InterruptGuard::new_lock(unsafe { Qemu::new() });

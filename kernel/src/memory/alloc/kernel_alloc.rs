@@ -10,6 +10,8 @@ use core::{
 
 use essentials::{address::VirtualAddress, spin::SpinLock};
 
+use crate::utils::InterruptGuard;
+
 #[global_allocator]
 pub static KERNEL_ALLOC: KernelAlloc = KernelAlloc::new();
 
@@ -91,20 +93,21 @@ impl<'a> FreeNode<'a> {
 
 #[derive(Debug)]
 pub struct KernelAlloc<'a> {
-    head: SpinLock<Option<&'a mut FreeNode<'a>>>,
+    head: InterruptGuard<SpinLock<Option<&'a mut FreeNode<'a>>>>,
     total_size: AtomicUsize,
 }
 
 impl<'a> KernelAlloc<'a> {
     pub const fn new() -> Self {
         Self {
-            head: SpinLock::new(None),
+            head: InterruptGuard::new_lock(None),
             total_size: AtomicUsize::new(0),
         }
     }
 
     unsafe fn add_free_region(&self, addr: usize, size: usize) {
-        let mut current_head = self.head.lock();
+        let current_head = self.head.lock();
+        let mut current_head = current_head.lock();
 
         let head = unsafe { &mut *(addr as *mut FreeNode) };
         *head = FreeNode {
@@ -146,7 +149,9 @@ impl<'a> KernelAlloc<'a> {
 unsafe impl GlobalAlloc for KernelAlloc<'_> {
     unsafe fn alloc(&self, layout: Layout) -> *mut u8 {
         let layout = Self::size_align(layout);
-        let mut head = self.head.lock();
+
+        let head = self.head.lock();
+        let mut head = head.lock();
 
         FreeNode::allocate(&mut head, layout)
             .map(|(node, ptr)| {

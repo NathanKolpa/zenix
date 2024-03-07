@@ -1,1 +1,4 @@
-// TOOD: add a container which prevents interrupt deadlocks
+mod interrupt_guard;
+
+pub use interrupt_guard::*;
+

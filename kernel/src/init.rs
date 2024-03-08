@@ -13,7 +13,6 @@ use crate::{
 use crate::{arch, debug_println, info_println};
 
 fn print_info(boot_info: &BootInfo) {
-    info_println!("Staring the Zenix operating system...");
     info_println!("Architecture: {}", arch::NAME);
     info_println!("Debug channel: {}", crate::log::CHANNEL_NAME);
     if let Some(bootloader_name) = boot_info.bootloader_name() {
@@ -33,10 +32,7 @@ fn print_info(boot_info: &BootInfo) {
 ///
 /// The argument `boot_info` should contain a valid memory map for the machine.
 pub unsafe fn init(boot_info: &BootInfo) {
-    // We should first initialize architecture specific stuff before anything else.
-    arch::init();
-
-    print_info(boot_info);
+    info_println!("Staring the Zenix operating system...");
 
     // Initializing the heap is also very important to do first.
     // Even the frame allocator uses the heap!
@@ -46,8 +42,9 @@ pub unsafe fn init(boot_info: &BootInfo) {
         heap.size as usize,
     ));
 
-    debug_println!("Kernel heap initialized");
+    debug_println!("KERNEL_HEAP initialized");
 
+    // When frame alloc is initialized then memory mapping is possible.
     FRAME_ALLOC.init_with(
         boot_info.usable_memory(),
         boot_info.physycal_memory_offset(),
@@ -56,9 +53,13 @@ pub unsafe fn init(boot_info: &BootInfo) {
     debug_println!("FRAME_ALLOC initialized");
 
     let mut root_mapper = MemoryMapper::new_root_mapper(boot_info.physycal_memory_offset());
-    root_mapper.share_all();
 
-    debug_println!("Virtual memory initialized");
+    arch::init(boot_info);
+
+    print_info(boot_info);
+
+    root_mapper.share_all();
+    debug_println!("Root memory map shared");
 
     SCHEDULER.init();
     let kernel_tid = SCHEDULER

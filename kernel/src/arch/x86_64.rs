@@ -7,6 +7,7 @@ mod idt;
 mod info;
 mod init;
 mod isr_wrapper;
+mod int_control;
 pub use info::print_info;
 pub use init::init;
 

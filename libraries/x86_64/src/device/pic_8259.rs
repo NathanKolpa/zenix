@@ -95,6 +95,13 @@ impl ChainedPic8259 {
         }
     }
 
+    pub fn enable(&mut self) {
+        unsafe {
+            self.pics[0].write_mask(0);
+            self.pics[1].write_mask(0);
+        }
+    }
+
     pub fn disable(&mut self) {
         unsafe {
             self.pics[0].write_mask(0xff);

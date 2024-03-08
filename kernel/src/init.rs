@@ -15,12 +15,16 @@ use crate::{arch, debug_println, info_println};
 fn print_info(boot_info: &BootInfo) {
     info_println!("Staring the Zenix operating system...");
     info_println!("Architecture: {}", arch::NAME);
-    arch::print_info();
     info_println!("Debug channel: {}", crate::log::CHANNEL_NAME);
     if let Some(bootloader_name) = boot_info.bootloader_name() {
         info_println!("Bootloader: {bootloader_name}");
     }
     info_print!("{}", MemoryInfo::from_boot_info(boot_info));
+
+    arch::print_info();
+    if let Some(rsdp_addr) = boot_info.rsdp_addr() {
+        info_println!("RSDP: {rsdp_addr}");
+    }
 }
 
 /// Initialize and start the operating system.

@@ -40,6 +40,10 @@ pub mod wrmsr;
 
 #[cfg(any(target_arch = "x86_64", target_arch = "x86"))]
 #[doc(cfg(any(target_arch = "x86_64", target_arch = "x86")))]
+pub mod acpi;
+
+#[cfg(any(target_arch = "x86_64", target_arch = "x86"))]
+#[doc(cfg(any(target_arch = "x86_64", target_arch = "x86")))]
 pub use halt::*;
 pub use privilege::PrivilegeLevel;
 pub use rflags::RFlags;

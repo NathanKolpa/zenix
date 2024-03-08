@@ -28,7 +28,7 @@ pub unsafe fn cpuid(mut eax: u64) -> (u64, u64, u64, u64) {
 
     (eax, ebx, ecx, edx)
 }
-pub fn get_features() -> CpuFeatures {
+pub fn read_features() -> CpuFeatures {
     let (_eax, _ebx, ecx, edx) = unsafe { cpuid(1) };
 
     CpuFeatures::new(ecx, edx)

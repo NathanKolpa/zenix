@@ -32,7 +32,11 @@ pub mod cpuid;
 
 #[cfg(target_arch = "x86_64")]
 #[doc(cfg(target_arch = "x86_64"))]
-pub mod msr;
+pub mod rdmsr;
+
+#[cfg(target_arch = "x86_64")]
+#[doc(cfg(target_arch = "x86_64"))]
+pub mod wrmsr;
 
 #[cfg(any(target_arch = "x86_64", target_arch = "x86"))]
 #[doc(cfg(any(target_arch = "x86_64", target_arch = "x86")))]

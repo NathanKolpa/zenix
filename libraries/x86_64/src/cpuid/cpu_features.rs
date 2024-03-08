@@ -1,3 +1,5 @@
+use core::fmt::Display;
+
 pub struct CpuFeatures {
     ecx: u64,
     edx: u64,
@@ -14,5 +16,21 @@ impl CpuFeatures {
 
     pub const fn sse3(&self) -> bool {
         self.ecx & (1 << 0) != 0
+    }
+}
+
+impl Display for CpuFeatures {
+    fn fmt(&self, f: &mut core::fmt::Formatter<'_>) -> core::fmt::Result {
+        let mut set = f.debug_set();
+
+        if self.sse3() {
+            set.entry(&"SSE3");
+        }
+
+        if self.apic() {
+            set.entry(&"APIC");
+        }
+
+        set.finish()
     }
 }

@@ -1,4 +1,7 @@
-use crate::vga::{VGA_ADDR, VGA_LEN};
+use crate::{
+    rsdp_detection::{RSDP_ADDR_END, RSDP_ADDR_START},
+    vga::{VGA_ADDR, VGA_LEN},
+};
 
 extern "C" {
     pub static BUMP_MEMORY_START: u8;
@@ -60,6 +63,13 @@ pub fn known_regions() -> impl Iterator<Item = KnownRegion> + Clone {
             writable: true,
             executable: false,
             mmio: true,
+        },
+        KnownRegion {
+            start: RSDP_ADDR_START as u64,
+            size: (RSDP_ADDR_END - RSDP_ADDR_START) as u64,
+            writable: false,
+            executable: false,
+            mmio: false,
         },
     ]
     .into_iter()

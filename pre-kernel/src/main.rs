@@ -10,6 +10,7 @@ mod long_mode;
 mod multiboot;
 mod paging;
 mod regions;
+mod rsdp_detection;
 mod vga;
 
 use core::arch::{asm, global_asm};
@@ -21,6 +22,7 @@ use crate::{
     long_mode::*,
     multiboot::{MultibootInfo, MULTIBOOT_MAGIC},
     paging::{map_kernel, setup_paging, PagingSetupError},
+    rsdp_detection::scan_special_region_for_rsdp,
 };
 
 global_asm!(include_str!("boot.s"));
@@ -80,7 +82,6 @@ fn run(multiboot_magic_arg: u32, multiboot_info_addr: u32) -> Result<(), PreKern
     if multiboot_magic_arg != MULTIBOOT_MAGIC {
         return Err(PreKernelError::InvalidMulitbootMagic);
     }
-
     if !cpuid_supported() {
         return Err(PreKernelError::CpuidNotsupported);
     }
@@ -111,9 +112,17 @@ fn run(multiboot_magic_arg: u32, multiboot_info_addr: u32) -> Result<(), PreKern
 
     let gdt_table = setup_gdt_table(&mut bump_memory);
 
+    let rsdp_addr = unsafe { scan_special_region_for_rsdp() };
+
     // Create the kernel boot info before enabling paging, because the mulitboot info can't be accessed after
     // paging doing so.
-    let kernel_boot_info = setup_boot_info(&mut bump_memory, mmap, kernel_module_region, info);
+    let kernel_boot_info = setup_boot_info(
+        &mut bump_memory,
+        mmap,
+        kernel_module_region,
+        info,
+        rsdp_addr,
+    );
 
     let l4_page_table = setup_paging(&mut bump_memory, mmap.clone(), &kernel_module)
         .map_err(PreKernelError::FailedToSetupPaging)?;

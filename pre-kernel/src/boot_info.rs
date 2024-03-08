@@ -20,6 +20,7 @@ pub fn setup_boot_info<'a>(
     mmap: impl Iterator<Item = &'a MultibootMMapEntry> + Copy,
     kernel_module_region: MemoryRegion,
     multiboot_info: &'static MultibootInfo,
+    rsdp: Option<u64>,
 ) -> &'static mut BootInfoData {
     let usable_memory = setup_mmap_info(&mut bump_memory, mmap, kernel_module_region);
 
@@ -45,6 +46,7 @@ pub fn setup_boot_info<'a>(
         kernel_arguments_len,
         bootloader_name_addr,
         bootloader_name_len,
+        rsdp_addr: rsdp.unwrap_or_default(),
     })
 }
 

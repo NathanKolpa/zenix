@@ -6,25 +6,33 @@ use crate::interface::interrupts as kernel_interface;
 
 use super::gdt::*;
 use essentials::spin::{Singleton, SpinLock};
-use x86_64::{cpuid::get_features, device::pic_8259::ChainedPic8259, interrupt::*};
+use x86_64::{
+    cpuid::read_features,
+    device::{apic::Apic, pic_8259::ChainedPic8259},
+    interrupt::*,
+};
 
 const PIC_CHAIN_INTS_START: usize = InterruptDescriptorTable::STANDARD_INTERRUPTS_COUNT;
 const PIC_CHAIN_TICK_INT_INDEX: usize = PIC_CHAIN_INTS_START;
 
 enum InterruptControl {
     Pic(SpinLock<ChainedPic8259>),
-    Apic,
+    Apic(Apic),
 }
 
 fn init_int_control() -> InterruptControl {
-    let cpu_features = get_features();
+    let cpu_features = read_features();
 
     let mut pic = unsafe { ChainedPic8259::new(PIC_CHAIN_INTS_START as u8) };
     pic.init();
 
     if cpu_features.apic() {
         pic.disable();
-        return InterruptControl::Apic;
+
+        let mut apic = unsafe { Apic::from_msr() };
+        apic.enable();
+
+        return InterruptControl::Apic(apic);
     }
 
     InterruptControl::Pic(SpinLock::new(pic))
@@ -40,20 +48,20 @@ extern "x86-interrupt" fn uart_status_change_isr(_frame: InterruptStackFrame) {
     kernel_interface::uart_status_change();
 }
 
-fn apic_tick_isr(ctx_ptr: *const InterruptedContext) -> InterruptedContext {
-    let ctx = unsafe { (*ctx_ptr).clone() };
-
-    kernel_interface::tick(ctx)
-}
-
 fn tick_isr(ctx_ptr: *const InterruptedContext) -> InterruptedContext {
     let ctx = unsafe { (*ctx_ptr).clone() };
+    let new_ctx = kernel_interface::tick(ctx);
 
-    if let InterruptControl::Pic(pic) = INTERRUPT_CONTROL.deref() {
-        without_interrupts(|| pic.lock().end_of_interrupt(PIC_CHAIN_TICK_INT_INDEX as u8));
+    match INTERRUPT_CONTROL.deref() {
+        InterruptControl::Pic(pic) => {
+            without_interrupts(|| pic.lock().end_of_interrupt(PIC_CHAIN_TICK_INT_INDEX as u8));
+        }
+        InterruptControl::Apic(apic) => {
+            apic.end_of_interrupt();
+        }
     }
 
-    kernel_interface::tick(ctx)
+    new_ctx
 }
 
 wrap_isr!(tick_isr, tick_isr_handler);
@@ -82,7 +90,7 @@ fn init_idt() -> InterruptDescriptorTable {
         InterruptControl::Pic(_) => {
             idt[PIC_CHAIN_TICK_INT_INDEX].set_handler(kernel_segment, tick_isr_handler);
         }
-        InterruptControl::Apic => {}
+        InterruptControl::Apic(_) => {}
     }
 
     idt

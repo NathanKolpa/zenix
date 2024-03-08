@@ -15,6 +15,7 @@ use crate::{arch, debug_println, info_println};
 fn print_info(boot_info: &BootInfo) {
     info_println!("Staring the Zenix operating system...");
     info_println!("Architecture: {}", arch::NAME);
+    arch::print_info();
     info_println!("Debug channel: {}", crate::log::CHANNEL_NAME);
     if let Some(bootloader_name) = boot_info.bootloader_name() {
         info_println!("Bootloader: {bootloader_name}");

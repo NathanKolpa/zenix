@@ -58,7 +58,7 @@ impl Zone {
     fn level_allocate(&self, index: usize) -> Option<(PhysicalAddress, usize)> {
         let level = self.levels.get(index)?;
 
-        let level_lock = level.lock();
+        let level_lock = level.guard();
         let mut level_lock = level_lock.lock();
 
         level_lock
@@ -89,7 +89,7 @@ impl Zone {
 
         // holding on to all the locks is important.
         // we dont want to coalesce a block when another thread tries allocate.
-        let level_lock = self.levels[index].lock();
+        let level_lock = self.levels[index].guard();
         let mut level_lock = level_lock.lock();
 
         let aligned_addr = addr.align_down(level_lock.block_size());
@@ -146,7 +146,7 @@ impl Zone {
 
             let aligned_addr = addr.align_down(block_size);
 
-            let level_lock = level.lock();
+            let level_lock = level.guard();
             let level_lock = level_lock.lock();
 
             if level_lock.is_within_allocated_block(aligned_addr) {

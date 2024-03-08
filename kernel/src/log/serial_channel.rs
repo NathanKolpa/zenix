@@ -45,7 +45,7 @@ where
     }
 
     pub fn flush_availible(&self) {
-        let channel = self.serial.lock();
+        let channel = self.serial.guard();
         let mut channel = channel.lock();
 
         loop {

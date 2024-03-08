@@ -3,7 +3,7 @@ use core::{
     ops::Deref,
 };
 
-use essentials::spin::SpinLock;
+use essentials::spin::{SpinLock, SpinLockGuard};
 use x86_64::{
     interrupt::{disable_interrupts, enable_interrupts},
     RFlags,
@@ -39,7 +39,7 @@ impl<T> InterruptGuard<T> {
         Self { data }
     }
 
-    pub fn lock(&self) -> InterruptLockGuard<'_, T> {
+    pub fn guard(&self) -> InterruptLockGuard<'_, T> {
         let ints_enabled = RFlags::read().interrupts_enabled();
 
         if ints_enabled {
@@ -51,6 +51,11 @@ impl<T> InterruptGuard<T> {
             ints_enabled,
         }
     }
+}
+
+pub struct InterruptSpinLockGuard<'a, T> {
+    lock: SpinLockGuard<'a, T>,
+    guard: InterruptLockGuard<'a, SpinLock<T>>,
 }
 
 impl<T> InterruptGuard<SpinLock<T>> {

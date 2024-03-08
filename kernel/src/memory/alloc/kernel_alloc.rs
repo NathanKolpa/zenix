@@ -106,7 +106,7 @@ impl<'a> KernelAlloc<'a> {
     }
 
     unsafe fn add_free_region(&self, addr: usize, size: usize) {
-        let current_head = self.head.lock();
+        let current_head = self.head.guard();
         let mut current_head = current_head.lock();
 
         let head = unsafe { &mut *(addr as *mut FreeNode) };
@@ -150,7 +150,7 @@ unsafe impl GlobalAlloc for KernelAlloc<'_> {
     unsafe fn alloc(&self, layout: Layout) -> *mut u8 {
         let layout = Self::size_align(layout);
 
-        let head = self.head.lock();
+        let head = self.head.guard();
         let mut head = head.lock();
 
         FreeNode::allocate(&mut head, layout)

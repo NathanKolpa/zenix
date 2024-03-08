@@ -4,8 +4,10 @@ mod ctx;
 pub mod devices;
 mod gdt;
 mod idt;
+mod info;
 mod init;
 mod isr_wrapper;
+pub use info::print_info;
 pub use init::init;
 
 pub const NAME: &str = "x86_64";

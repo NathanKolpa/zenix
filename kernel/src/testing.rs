@@ -42,11 +42,11 @@ pub fn runner(tests: &[&dyn TestCase]) {
 
     debug_println!("All unit tests completed successfully, shutting down...");
 
-    QEMU_DEVICE.lock().exit(ExitCode::Success);
+    QEMU_DEVICE.guard().exit(ExitCode::Success);
 }
 pub fn panic_handler(info: &PanicInfo) -> ! {
     debug_println!("[failed]");
     debug_println!("Error: {}", info);
     debug_println!("Unit test failed, shutting down...");
-    QEMU_DEVICE.lock().exit(ExitCode::Failed);
+    QEMU_DEVICE.guard().exit(ExitCode::Failed);
 }

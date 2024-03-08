@@ -2,6 +2,8 @@
 
 use core::fmt::Debug;
 
+use essentials::address::VirtualAddress;
+
 #[repr(C)]
 #[derive(Clone, Copy, Debug)]
 pub struct MemoryRegion {
@@ -29,6 +31,8 @@ pub struct BootInfoData {
 
     pub bootloader_name_addr: u64,
     pub bootloader_name_len: u64,
+
+    pub rsdp_addr: u64,
 }
 
 pub struct BootInfo {
@@ -70,6 +74,16 @@ impl BootInfo {
         self.data.usable_heap
     }
 
+    pub fn rsdp_addr(&self) -> Option<VirtualAddress> {
+        let addr = self.data.rsdp_addr;
+
+        if addr == 0 {
+            return None;
+        }
+
+        Some(addr.into())
+    }
+
     pub fn kernel_arguments(&self) -> Option<&'static str> {
         if self.data.kernel_arguments_addr == 0 || self.data.kernel_arguments_len == 0 {
             return None;
@@ -106,6 +120,7 @@ impl Debug for BootInfo {
             .field("bump_memory", &self.bump_memory())
             .field("kernel_arguments", &self.kernel_arguments())
             .field("bootloader_name", &self.bootloader_name())
+            .field("rsdp_addr", &self.rsdp_addr())
             .finish()
     }
 }

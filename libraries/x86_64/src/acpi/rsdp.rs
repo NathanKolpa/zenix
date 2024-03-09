@@ -1,6 +1,8 @@
 use core::mem::{size_of, transmute_copy};
 
-pub const SIGNATURE: [u8; 8] = [b'R', b'S', b'D', b' ', b'P', b'T', b'R', b' '];
+use essentials::address::PhysicalAddress;
+
+pub const RSDP_SIGNATURE: [u8; 8] = [b'R', b'S', b'D', b' ', b'P', b'T', b'R', b' '];
 
 #[repr(C)]
 pub struct RSDP {
@@ -8,7 +10,7 @@ pub struct RSDP {
     pub checksum: u8,
     pub oem_id: [u8; 6],
     pub revision: u8,
-    pub rsdt_addr: u32,
+    pub rsdt_addr: PhysicalAddress,
 }
 
 impl RSDP {
@@ -24,13 +26,4 @@ impl RSDP {
     pub fn checksum_ok(&self) -> bool {
         self.sum() == 0
     }
-}
-
-#[repr(C)]
-pub struct ExtendedRSDP {
-    pub rsdp: RSDP,
-    pub length: u32,
-    pub extended_rsdt_addr: u64,
-    pub extended_checksum: u8,
-    pub _reserved: [u8; 3],
 }

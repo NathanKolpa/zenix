@@ -219,6 +219,12 @@ impl Zone {
     pub fn contains(&self, addr: PhysicalAddress) -> bool {
         addr >= self.addr_start && addr <= self.addr_end
     }
+
+    pub fn clashes(&self, addr: PhysicalAddress, size: usize) -> bool {
+        self.contains(addr)
+            || self.contains(addr + size)
+            || self.addr_start >= addr && self.addr_start <= addr + size
+    }
 }
 
 fn order_of_two(size: usize) -> u8 {

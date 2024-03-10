@@ -1,2 +1,5 @@
 pub mod manager;
-pub mod mapper;
+
+mod mapper;
+
+pub use mapper::*;

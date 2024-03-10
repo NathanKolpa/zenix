@@ -5,7 +5,7 @@ use crate::{
     info_print,
     memory::{
         alloc::{kernel_alloc::KERNEL_ALLOC, MemoryInfo, FRAME_ALLOC},
-        map::mapper::MemoryMapper,
+        map::MemoryMapper,
     },
     multitasking::{scheduler::LOWEST_PRIORITY, SCHEDULER},
 };

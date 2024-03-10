@@ -221,6 +221,10 @@ impl FrameAllocator {
     pub fn min_size(&self) -> usize {
         2usize.pow(MIN_ORDER as u32)
     }
+
+    pub fn clashes(&self, addr: PhysicalAddress, size: usize) -> bool {
+        self.zones.iter().any(|zone| zone.clashes(addr, size))
+    }
 }
 
 pub static FRAME_ALLOC: FrameAllocator = FrameAllocator::new();

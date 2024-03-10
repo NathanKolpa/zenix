@@ -26,7 +26,10 @@ struct NavigateCtx {
     is_empty: bool,
 }
 
+// TODO: the API that MemoryMapper provides is alright, but my god the implementation sucks.
+
 const BORROW_BIT: u64 = 0;
+const ALLOCATED_BIT: u64 = 1;
 
 /// The `MemoryMapper` struct manages the low-level mappings between physical and virtual addresses.
 ///
@@ -50,8 +53,9 @@ pub struct MemoryMapper {
 }
 
 impl MemoryMapper {
-    /// Create a new `MemoryMapper` instance from the current `CR3` register value, and call
-    /// [`Self::share_all`].
+    pub const PAGE_SIZE: usize = 4096;
+
+    /// Create a new `MemoryMapper` instance from the current `CR3` register value.
     ///
     /// # Safety
     ///
@@ -60,14 +64,10 @@ impl MemoryMapper {
     pub unsafe fn new_root_mapper(global_offset: usize) -> Self {
         let l4_table = cr3::active_page();
 
-        let mut mapper = Self {
+        Self {
             global_offset,
             l4_table,
-        };
-
-        mapper.share_all();
-
-        mapper
+        }
     }
 
     /// Make all owned memory shared.
@@ -118,7 +118,7 @@ impl MemoryMapper {
 
     /// Map a region of virtual memory.
     ///
-    /// At no point should the kernel hold a refrence to the new mapping where unmapping it leads
+    /// At no point should the kernel hold a refrence to the new mapping inner memory where unmapping it leads
     /// to UB. This way, [`Self::unmap`], [`Self::unmap_all_owned`] and [`Self::drop`] is safe.
     ///
     /// # Arguments
@@ -134,52 +134,7 @@ impl MemoryMapper {
         size: usize,
         properties: MemoryProperties,
     ) -> Result<(VirtualAddress, usize), NewMapError> {
-        let flags = Self::props_to_flags(properties, true);
-
-        let mut total_size = 0;
-        let alloc_missing = |ctx: NavigateCtx,
-                             huge_size: Option<PageSize>|
-         -> Result<Option<PageTableEntry>, NewMapError> {
-            let mut entry = ctx.entry;
-            let mut flags = entry.flags() | flags;
-
-            let request_size = huge_size.unwrap_or(PageSize::Size4Kib);
-
-            if !entry.flags().present() {
-                if huge_size.is_some() {
-                    flags = flags.set_huge(true);
-                }
-
-                let (frame_addr, _) = FRAME_ALLOC
-                    .allocate_zeroed(request_size.as_usize())
-                    .ok_or(NewMapError::OutOfFrames)?;
-
-                entry.set_addr(frame_addr);
-            }
-
-            if ctx.points_to_backing {
-                total_size += request_size.as_usize();
-            }
-
-            entry.set_flags(flags);
-            Ok(Some(entry))
-        };
-
-        let navigation_result =
-            unsafe { self.navigate_mut(address, size, None, true, false, false, alloc_missing) };
-
-        let start = match navigation_result {
-            Ok(start) => start,
-            Err(NewMapError::OutOfFrames) => {
-                self.unmap_inner(address, total_size, false, false)
-                    .expect("dealloc should not fail on memory created by map()");
-
-                return Err(NewMapError::OutOfFrames);
-            }
-            Err(e) => return Err(e),
-        };
-
-        Ok((start, total_size))
+        unsafe { self.map_inner(address, size, properties, None) }
     }
 
     /// Unmap a region of memory.
@@ -236,9 +191,12 @@ impl MemoryMapper {
                 return Err(ModifyMapError::OutOfBounds);
             }
 
-            // Safety:
-            // Owned pages *should* be using allocated using `FRAME_ALLOC`.
-            unsafe { FRAME_ALLOC.deallocate(entry.addr()) };
+            if entry.flags().custom::<ALLOCATED_BIT>() {
+                // Safety:
+                // Owned pages *should* be using allocated using `FRAME_ALLOC`.
+                unsafe { FRAME_ALLOC.deallocate(entry.addr()) };
+            }
+
             total_size += request_size.as_usize();
 
             entry.set_flags(PageTableEntryFlags::null());
@@ -252,13 +210,174 @@ impl MemoryMapper {
         Ok(())
     }
 
-    /// Calculate the effective [`MemoryProperties`] on a given range of memory.
-    pub fn effective_properties(
+    unsafe fn map_inner(
+        &mut self,
+        address: VirtualAddress,
+        size: usize,
+        properties: MemoryProperties,
+        mut phys: Option<PhysicalAddress>,
+    ) -> Result<(VirtualAddress, usize), NewMapError> {
+        let flags = Self::props_to_flags(properties, true);
+
+        let mut total_size = 0;
+        let alloc_missing = |ctx: NavigateCtx,
+                             huge_size: Option<PageSize>|
+         -> Result<Option<PageTableEntry>, NewMapError> {
+            let mut entry = ctx.entry;
+            let mut flags = (entry.flags() | flags)
+                .set_no_cache(false)
+                .set_no_exec(false);
+
+            let request_size = huge_size.unwrap_or(PageSize::Size4Kib);
+
+            if ctx.points_to_backing && entry.flags().present() {
+                let unchanged = phys.map(|phys| phys == entry.addr()).unwrap_or_default();
+
+                if !unchanged {
+                    return Err(NewMapError::AlreadyMapped);
+                }
+            }
+
+            if !entry.flags().present() {
+                if huge_size.is_some() {
+                    flags = flags.set_huge(true);
+                }
+
+                let mut frame_addr = None;
+
+                if !ctx.points_to_backing {
+                    if let Some(phys) = phys.as_mut() {
+                        frame_addr = Some(*phys);
+                        *phys += request_size.as_usize();
+                    }
+                }
+
+                let frame_addr = match frame_addr {
+                    Some(a) => a,
+                    None => {
+                        let (frame_addr, _) = FRAME_ALLOC
+                            .allocate_zeroed(request_size.as_usize())
+                            .ok_or(NewMapError::OutOfFrames)?;
+
+                        flags = flags.set_custom::<ALLOCATED_BIT>(true);
+
+                        frame_addr
+                    }
+                };
+
+                entry.set_addr(frame_addr);
+            }
+
+            if ctx.points_to_backing {
+                total_size += request_size.as_usize();
+
+                if properties.mmio() {
+                    flags = flags.set_no_cache(true);
+                }
+
+                if !properties.executable() {
+                    flags = flags.set_no_exec(true);
+                }
+            }
+
+            entry.set_flags(flags);
+            Ok(Some(entry))
+        };
+
+        let navigation_result =
+            self.navigate_mut(address, size, None, true, false, false, alloc_missing);
+
+        let start = match navigation_result {
+            Ok(start) => start,
+            Err(NewMapError::OutOfFrames) => {
+                self.unmap_inner(address, total_size, false, false)
+                    .expect("dealloc should not fail on memory created by map()");
+
+                return Err(NewMapError::OutOfFrames);
+            }
+            Err(e) => return Err(e),
+        };
+
+        Ok((start, total_size))
+    }
+
+    /// Identity map memory
+    ///
+    /// # Safety
+    ///
+    /// The function does not assert that the *backing* memory region specified is not owned by another MemoryMapper.
+    ///
+    /// Returns a `Result` where:
+    /// * `Ok(address, size)` - Indicates successful mapping, returning the actual size and address of the mapped region.
+    /// * Err(NotOwned) - Tried to map to an unowned region of memory OR the region clashes with
+    /// memory in [`FRAME_ALLOC`]
+    pub unsafe fn identity_map(
+        &mut self,
+        address: PhysicalAddress,
+        size: usize,
+        properties: MemoryProperties,
+    ) -> Result<(VirtualAddress, usize), NewMapError> {
+        let aligned_addr = address.align_down(Self::PAGE_SIZE);
+
+        let aligned_size = VirtualAddress::align_ptr_up(
+            size + (address - aligned_addr).as_usize(),
+            Self::PAGE_SIZE,
+        );
+
+        if FRAME_ALLOC.clashes(aligned_addr, aligned_size) {
+            return Err(NewMapError::NotOwned);
+        }
+
+        self.map_inner(
+            VirtualAddress::from(aligned_addr.as_usize()),
+            aligned_size,
+            properties,
+            Some(aligned_addr),
+        )
+    }
+
+    /// Get mapping info about a particular address.
+    ///
+    /// # Return a `Result` where:
+    ///
+    /// * Ok() A union constisting of:
+    ///   * [`MemoryProperties`] The effective memory properties of the address.
+    ///   * [`PhysicalAddress`] The physical address of the mapping.
+    ///   * [`usize`] The size of the page in bytes
+    pub fn mapping_info(
         &self,
-        _address: VirtualAddress,
-        _size: usize,
-    ) -> Result<MemoryProperties, ReadMapError> {
-        todo!()
+        address: VirtualAddress,
+    ) -> Result<(MemoryProperties, PhysicalAddress, usize), ReadMapError> {
+        let mut addr = None;
+        let mut flags = PageTableEntryFlags::null();
+        let mut size = 0;
+
+        let mut apply = |ctx: NavigateCtx| -> Result<(), ReadMapError> {
+            if ctx.points_to_backing {
+                addr = Some(ctx.entry.addr());
+                size += ctx.size;
+            }
+
+            if ctx.depth == 0 {
+                flags = ctx.entry.flags();
+            } else {
+                flags = flags & ctx.entry.flags();
+            }
+
+            Ok(())
+        };
+
+        self.navigate(address, Self::PAGE_SIZE, None, &mut apply)?;
+
+        let Some(addr) = addr else {
+            return Err(ReadMapError::NotMapped);
+        };
+
+        if !flags.present() {
+            return Err(ReadMapError::NotMapped);
+        }
+
+        Ok((Self::flags_to_props(flags), addr, size))
     }
 
     fn navigate<E>(
@@ -327,7 +446,7 @@ impl MemoryMapper {
                 depth: table_index as u8 - 1,
                 is_last_present_entry: *entry_index == last_entry_index as u16,
                 entry_index: *entry_index,
-                size: 4096 * 512usize.pow(4u32.saturating_sub(table_index as u32)),
+                size: Self::PAGE_SIZE * 512usize.pow(4u32.saturating_sub(table_index as u32)),
                 points_to_backing: (entry.flags().huge() && entry.flags().present())
                     || table_index == 4,
                 is_empty: false,
@@ -373,9 +492,8 @@ impl MemoryMapper {
         let mut last_entry_index = -1;
         let mut revisit = false;
 
+        let mut current_addr = VirtualAddress::from_indices(start_indices);
         loop {
-            let current_addr = VirtualAddress::from_indices(start_indices);
-
             let table_index = table_stack.len();
             let table_level = 4 - table_index + 1;
 
@@ -425,6 +543,7 @@ impl MemoryMapper {
                     revisit = true;
                 }
 
+                current_addr = VirtualAddress::from_indices(start_indices);
                 continue;
             };
 
@@ -450,7 +569,7 @@ impl MemoryMapper {
                     is_last_present_entry: last_entry_index as u16 == *entry_index,
                     points_to_backing: (entry.flags().huge() && entry.flags().present())
                         || table_index == 4,
-                    size: 4096 * 512usize.pow(4u32.saturating_sub(table_index as u32)),
+                    size: Self::PAGE_SIZE * 512usize.pow(4u32.saturating_sub(table_index as u32)),
                     is_empty,
                 };
 
@@ -481,6 +600,8 @@ impl MemoryMapper {
             } else {
                 revisit = false;
                 *entry_index += 1;
+
+                current_addr = VirtualAddress::from_indices(start_indices);
 
                 if current_addr >= end {
                     break;
@@ -520,6 +641,17 @@ impl MemoryMapper {
             .set_user_accessible(props.user())
             .set_no_exec(!props.executable())
             .set_global(props.kernel())
+            .set_no_cache(props.mmio())
+    }
+
+    const fn flags_to_props(flags: PageTableEntryFlags) -> MemoryProperties {
+        MemoryProperties::new(
+            flags.writable(),
+            flags.present(),
+            !flags.user_accessible(),
+            !flags.noexec(),
+            flags.no_cache(),
+        )
     }
 
     pub fn tree_display(

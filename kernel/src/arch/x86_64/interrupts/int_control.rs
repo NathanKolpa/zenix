@@ -4,8 +4,10 @@ use x86_64::{
     device::{apic::Apic, pic_8259::ChainedPic8259},
 };
 
-use crate::{arch::x86_64::acpi::{AcpiInfo, ACPI_INFO}, utils::InterruptGuard};
-
+use crate::{
+    arch::x86_64::acpi::{AcpiInfo, ACPI_INFO},
+    utils::InterruptGuard,
+};
 
 pub enum InterruptControl {
     Pic(InterruptGuard<SpinLock<ChainedPic8259>>),

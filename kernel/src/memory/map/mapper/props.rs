@@ -4,15 +4,26 @@ pub struct MemoryProperties {
     readable: bool,
     kernel: bool,
     executable: bool,
+    mmio: bool,
 }
 
 impl MemoryProperties {
-    pub const fn new(writable: bool, readable: bool, kernel: bool, executable: bool) -> Self {
+    pub const MMIO_PAGE: MemoryProperties = Self::new(true, true, true, false, true);
+    pub const KERNEL_READ_ONLY: MemoryProperties = Self::new(false, true, true, false, false);
+
+    pub const fn new(
+        writable: bool,
+        readable: bool,
+        kernel: bool,
+        executable: bool,
+        mmio: bool,
+    ) -> Self {
         Self {
             writable,
             readable,
             kernel,
             executable,
+            mmio,
         }
     }
 
@@ -34,5 +45,9 @@ impl MemoryProperties {
 
     pub const fn executable(&self) -> bool {
         self.executable
+    }
+
+    pub const fn mmio(&self) -> bool {
+        self.mmio
     }
 }

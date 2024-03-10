@@ -1,7 +1,9 @@
-use core::fmt::Display;
+use core::{fmt::Display, mem::size_of};
 
-use essentials::address::VirtualAddress;
+use essentials::address::{PhysicalAddress, VirtualAddress};
 use x86_64::acpi::RSDP;
+
+use crate::memory::map::{MemoryMapper, MemoryProperties};
 
 use super::AcpiError;
 
@@ -24,7 +26,18 @@ impl Display for AcpiInfo {
     }
 }
 
-pub unsafe fn parse_acpi(rsdp_addr: VirtualAddress) -> Result<AcpiInfo, AcpiError> {
+pub unsafe fn parse_acpi(
+    rsdp_addr: VirtualAddress,
+    mapper: &mut MemoryMapper,
+) -> Result<AcpiInfo, AcpiError> {
+    mapper
+        .identity_map(
+            PhysicalAddress::new(rsdp_addr.as_usize()),
+            size_of::<RSDP>(),
+            MemoryProperties::KERNEL_READ_ONLY,
+        )
+        .map_err(AcpiError::MapRspdError)?;
+
     let header = &*rsdp_addr.as_ptr::<RSDP>();
 
     if !header.checksum_ok() {

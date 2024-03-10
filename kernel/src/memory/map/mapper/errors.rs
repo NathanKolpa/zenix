@@ -1,11 +1,17 @@
-#[derive(Debug)]
+#[derive(Debug, Clone, Copy)]
 pub enum NewMapError {
     NotOwned,
     OutOfFrames,
     AlreadyMapped,
 }
 
-#[derive(Debug)]
+#[derive(Debug, Clone, Copy)]
+pub enum IdentityMapError {
+    NotOwned,
+    OutOfFrames,
+}
+
+#[derive(Debug, Clone, Copy)]
 pub enum ModifyMapError {
     NotOwned,
     NotMapped,
@@ -22,7 +28,7 @@ impl From<ModifyMapError> for NewMapError {
     }
 }
 
+#[derive(Debug, Clone, Copy)]
 pub enum ReadMapError {
     NotMapped,
-    InconsistencyWithinRange,
 }

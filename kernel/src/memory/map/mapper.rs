@@ -50,6 +50,7 @@ const ALLOCATED_BIT: u64 = 1;
 pub struct MemoryMapper {
     l4_table: PhysicalAddress,
     global_offset: usize,
+    root: bool,
 }
 
 impl MemoryMapper {
@@ -67,6 +68,7 @@ impl MemoryMapper {
         Self {
             global_offset,
             l4_table,
+            root: true,
         }
     }
 
@@ -81,6 +83,8 @@ impl MemoryMapper {
     /// kernel memory. Because this memory never needs to be deallocated, this leaked memory will
     /// never cause any problem.
     pub fn share_all(&mut self) {
+        self.root = false;
+
         let share_entry = |ctx: NavigateCtx, _| -> Result<Option<PageTableEntry>, ModifyMapError> {
             let mut entry = ctx.entry;
             if entry.flags().custom::<BORROW_BIT>()
@@ -112,6 +116,10 @@ impl MemoryMapper {
     pub fn new_inherited_from_shared(&self) {}
 
     pub fn unmap_all_owned(&mut self) {
+        if self.root {
+            panic!("unmap_all_owned() on a root MemoryMapper is extreemly bad.");
+        }
+
         self.unmap_inner(VirtualAddress::null(), usize::MAX, true, false)
             .expect("unmap_all_owned should never fail")
     }

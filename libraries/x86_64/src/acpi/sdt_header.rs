@@ -1,9 +1,7 @@
-use core::{
-    mem::{size_of, transmute_copy},
-    u8,
-};
+use super::sum_bytes;
 
 #[repr(C)]
+#[derive(Debug)]
 pub struct SDTHeader {
     signature: [u8; 4],
     length: u32,
@@ -18,16 +16,22 @@ pub struct SDTHeader {
 
 impl SDTHeader {
     fn sum(&self) -> u8 {
-        const SIZE: usize = size_of::<SDTHeader>();
-        let raw_bytes: [u8; SIZE] = unsafe { transmute_copy(self) };
+        let raw_bytes = unsafe {
+            core::slice::from_raw_parts(self as *const Self as *const u8, self.length as usize)
+        };
 
-        raw_bytes
-            .into_iter()
-            .take(self.length as usize)
-            .fold(0u8, |acc, byte| acc.wrapping_add(byte))
+        sum_bytes(raw_bytes.iter().copied())
     }
 
     pub fn checksum_ok(&self) -> bool {
         self.sum() == 0
+    }
+
+    pub fn length(&self) -> usize {
+        self.length as usize
+    }
+
+    pub fn signature(&self) -> Option<&str> {
+        core::str::from_utf8(&self.signature).ok()
     }
 }

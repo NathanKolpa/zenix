@@ -1,29 +1,42 @@
-use core::mem::{size_of, transmute_copy};
+use core::mem::size_of;
 
 use essentials::address::PhysicalAddress;
+
+use super::sum_bytes;
 
 pub const RSDP_SIGNATURE: [u8; 8] = [b'R', b'S', b'D', b' ', b'P', b'T', b'R', b' '];
 
 #[repr(C)]
 pub struct RSDP {
-    pub signature: [u8; 8],
-    pub checksum: u8,
-    pub oem_id: [u8; 6],
-    pub revision: u8,
-    pub rsdt_addr: PhysicalAddress,
+    signature: [u8; 8],
+    checksum: u8,
+    oem_id: [u8; 6],
+    revision: u8,
+    rsdt_addr: u32,
 }
 
 impl RSDP {
     fn sum(&self) -> u8 {
-        const SIZE: usize = size_of::<RSDP>();
-        let raw_bytes: [u8; SIZE] = unsafe { transmute_copy(self) };
+        let raw_bytes = unsafe {
+            core::slice::from_raw_parts(self as *const Self as *const u8, size_of::<RSDP>())
+        };
 
-        raw_bytes
-            .into_iter()
-            .fold(0u8, |acc, byte| acc.wrapping_add(byte))
+        sum_bytes(raw_bytes.iter().copied())
     }
 
     pub fn checksum_ok(&self) -> bool {
         self.sum() == 0
+    }
+
+    pub fn rsdt_addr(&self) -> PhysicalAddress {
+        (self.rsdt_addr as usize).into()
+    }
+
+    pub fn oem_id(&self) -> Option<&str> {
+        core::str::from_utf8(&self.oem_id).ok()
+    }
+
+    pub fn extended(&self) -> bool {
+        self.revision >= 2
     }
 }

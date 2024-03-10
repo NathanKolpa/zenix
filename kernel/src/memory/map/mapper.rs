@@ -26,7 +26,9 @@ struct NavigateCtx {
     is_empty: bool,
 }
 
-// TODO: the API that MemoryMapper provides is alright, but my god the implementation sucks.
+// TODO: the API that MemoryMapper provides is alright but my god the implementation sucks.
+// TODO: the borrow bit could possible be simplified by giving a memory mapper a start + size and
+// anything outside is not allowed.
 
 const BORROW_BIT: u64 = 0;
 const ALLOCATED_BIT: u64 = 1;

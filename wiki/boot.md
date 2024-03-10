@@ -10,7 +10,7 @@ The actual Zenix Kernel is not part of the Pre-kernel, they are seperate executa
 
 The kernel mappings are backed by the physical memory of the Multiboot module, saving the overhead of copying the data of the module to the Kernel's mappings. There is a exceptions to this rule. Some sections are not present within the Kernel's elf file, but are still required to be mapped in memory. These sections are most likely static uninitialized data (commonly called the *.bss section*). This means that backing the memory mappings with the Mulitboot module is not possible. The parts of these sections located in the bump memory instead.
 
-The last step of the Pre-kernel is place information that can only be optained in at this stage of the boot process into the bump memory. So that, the Kernel can access this information throughout it's lifetime.
+The last step of the Pre-kernel is to save information that can would be lost after switching to long mode/calling to the kernel. This (boot) information gets stored in the bump memory and gets passed to the kernel.
 
 Finally, the Pre-kernel can call `kernel_main` and the actual Kernel starts running.
 

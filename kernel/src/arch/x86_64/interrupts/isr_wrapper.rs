@@ -2,14 +2,22 @@
 macro_rules! wrap_isr {
     ($outer:ident, $def:ident) => {
         #[naked]
-        pub extern "x86-interrupt" fn $def(_frame: InterruptStackFrame) {
-            fn inner(ctx: *const x86_64::interrupt::InterruptedContext) -> *const x86_64::interrupt::InterruptedContext {
-                let new_ctx = $outer(ctx);
-                (&new_ctx) as *const _
+        pub extern "x86-interrupt" fn $def(_frame: ::x86_64::interrupt::InterruptStackFrame) {
+            use ::x86_64::interrupt::InterruptedContext;
+
+            unsafe extern "C" fn inner(ctx: *mut InterruptedContext) {
+
+                match $outer(&*ctx) {
+                    None => {},
+                    Some(new_ctx) =>  {
+                        *ctx = new_ctx;
+                    },
+                }
             }
 
             unsafe {
                 core::arch::asm!(
+                    // save
                     "push rax",
                     "push rbx",
                     "push rcx",
@@ -25,14 +33,11 @@ macro_rules! wrap_isr {
                     "push r13",
                     "push r14",
                     "push r15",
-                    //
+                    // ctx ptr
                     "mov rdi, rsp",
+                    // call to handler
                     "call {handler}",
-                    "cmp rax, 0",
-                    "je 2f",
-                    "mov rsp, rax",
-                    "2:",
-                    //
+                    // restore
                     "pop r15",
                     "pop r14",
                     "pop r13",

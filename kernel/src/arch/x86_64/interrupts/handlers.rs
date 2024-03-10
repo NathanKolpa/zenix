@@ -9,17 +9,20 @@ pub extern "x86-interrupt" fn double_fault_handler(
     panic!("Double fault: {frame:?}")
 }
 
-pub extern "x86-interrupt" fn uart_status_change_isr(_frame: InterruptStackFrame) {
+fn uart_status_change(_ctx: &InterruptedContext) -> Option<InterruptedContext> {
     kernel_interface::uart_status_change();
+
+    None
 }
 
-pub extern "x86-interrupt" fn unhandled_isr(_frame: InterruptStackFrame) {
-    kernel_interface::unhandled_irq()
+fn unhandled(_ctx: &InterruptedContext) -> Option<InterruptedContext> {
+    kernel_interface::unhandled_irq();
+
+    None
 }
 
-fn tick_isr_inner(ctx_ptr: *const InterruptedContext) -> InterruptedContext {
-    let ctx = unsafe { (*ctx_ptr).clone() };
-    let new_ctx = kernel_interface::tick(ctx);
+fn tick(ctx: &InterruptedContext) -> Option<InterruptedContext> {
+    let new_ctx = kernel_interface::tick(ctx.clone());
 
     match &*INTERRUPT_CONTROL {
         InterruptControl::Pic(pic) => {
@@ -30,7 +33,9 @@ fn tick_isr_inner(ctx_ptr: *const InterruptedContext) -> InterruptedContext {
         }
     }
 
-    new_ctx
+    Some(new_ctx)
 }
 
-crate::wrap_isr!(tick_isr_inner, tick_isr);
+crate::wrap_isr!(uart_status_change, uart_status_change_isr);
+crate::wrap_isr!(unhandled, unhandled_isr);
+crate::wrap_isr!(tick, tick_isr);

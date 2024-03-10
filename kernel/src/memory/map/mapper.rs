@@ -255,10 +255,19 @@ impl MemoryMapper {
 
                 let mut frame_addr = None;
 
-                if !ctx.points_to_backing {
+                if ctx.points_to_backing {
                     if let Some(phys) = phys.as_mut() {
                         frame_addr = Some(*phys);
                         *phys += request_size.as_usize();
+                        total_size += request_size.as_usize();
+
+                        if properties.mmio() {
+                            flags = flags.set_no_cache(true);
+                        }
+
+                        if !properties.executable() {
+                            flags = flags.set_no_exec(true);
+                        }
                     }
                 }
 
@@ -276,18 +285,6 @@ impl MemoryMapper {
                 };
 
                 entry.set_addr(frame_addr);
-            }
-
-            if ctx.points_to_backing {
-                total_size += request_size.as_usize();
-
-                if properties.mmio() {
-                    flags = flags.set_no_cache(true);
-                }
-
-                if !properties.executable() {
-                    flags = flags.set_no_exec(true);
-                }
             }
 
             entry.set_flags(flags);

@@ -313,20 +313,18 @@ impl MemoryMapper {
 
     /// Identity map memory
     ///
-    /// # Safety
-    ///
-    /// The function does not assert that the *backing* memory region specified is not owned by another MemoryMapper.
-    ///
     /// Returns a `Result` where:
     /// * `Ok(address, size)` - Indicates successful mapping, returning the actual size and address of the mapped region.
     /// * Err(NotOwned) - Tried to map to an unowned region of memory OR the region clashes with
     /// memory in [`FRAME_ALLOC`]
-    pub unsafe fn identity_map(
+    pub fn identity_map(
         &mut self,
         address: PhysicalAddress,
         size: usize,
         properties: MemoryProperties,
     ) -> Result<(VirtualAddress, usize), NewMapError> {
+        assert!(self.root);
+
         let aligned_addr = address.align_down(Self::PAGE_SIZE);
 
         let aligned_size = VirtualAddress::align_ptr_up(
@@ -338,12 +336,17 @@ impl MemoryMapper {
             return Err(NewMapError::NotOwned);
         }
 
-        self.map_inner(
-            VirtualAddress::from(aligned_addr.as_usize()),
-            aligned_size,
-            properties,
-            Some(aligned_addr),
-        )
+        // Safety: no backing with 2 mappings can be created because:
+        // - It does not clash with FRAME_ALLOC
+        // - There are no other MemoryMapper objects as asserted by self.root == true
+        unsafe {
+            self.map_inner(
+                VirtualAddress::from(aligned_addr.as_usize()),
+                aligned_size,
+                properties,
+                Some(aligned_addr),
+            )
+        }
     }
 
     /// Get mapping info about a particular address.

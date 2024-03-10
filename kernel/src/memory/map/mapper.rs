@@ -519,6 +519,7 @@ impl MemoryMapper {
             .set_writable(props.writable())
             .set_user_accessible(props.user())
             .set_no_exec(!props.executable())
+            .set_global(props.kernel())
     }
 
     pub fn tree_display(

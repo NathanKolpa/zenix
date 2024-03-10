@@ -23,7 +23,7 @@ pub use error::SchedulerError;
 pub use thread_box::ThreadBox;
 
 const MAX_THREADS: usize = 1024 * 10;
-const PRIORITY_LEVELS: usize = 8;
+const PRIORITY_LEVELS: usize = 1;
 
 // TOOD: nodes and dummy nodes to the eternal alloc.
 

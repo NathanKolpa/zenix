@@ -19,11 +19,6 @@ fn print_info(boot_info: &BootInfo) {
         info_println!("Bootloader: {bootloader_name}");
     }
     info_print!("{}", MemoryInfo::from_boot_info(boot_info));
-
-    arch::print_info();
-    if let Some(rsdp_addr) = boot_info.rsdp_addr() {
-        info_println!("RSDP: {rsdp_addr}");
-    }
 }
 
 /// Initialize and start the operating system.
@@ -52,14 +47,14 @@ pub unsafe fn init(boot_info: &BootInfo) {
 
     debug_println!("FRAME_ALLOC initialized");
 
-    let mut root_mapper = MemoryMapper::new_root_mapper(boot_info.physycal_memory_offset());
+    let mut kernel_mem = MemoryMapper::new_root_mapper(boot_info.physycal_memory_offset());
 
-    arch::init(boot_info);
+    arch::init(boot_info, &mut kernel_mem);
 
     print_info(boot_info);
 
-    root_mapper.share_all();
-    debug_println!("Root memory map shared");
+    kernel_mem.share_all();
+    debug_println!("Kernel virtual memory shared");
 
     SCHEDULER.init();
     let kernel_tid = SCHEDULER

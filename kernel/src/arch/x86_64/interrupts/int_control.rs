@@ -4,10 +4,11 @@ use x86_64::{
     device::{apic::Apic, pic_8259::ChainedPic8259},
 };
 
-use super::acpi::{AcpiInfo, ACPI_INFO};
+use crate::{arch::x86_64::acpi::{AcpiInfo, ACPI_INFO}, utils::InterruptGuard};
+
 
 pub enum InterruptControl {
-    Pic(SpinLock<ChainedPic8259>),
+    Pic(InterruptGuard<SpinLock<ChainedPic8259>>),
     Apic(Apic),
 }
 
@@ -25,7 +26,7 @@ unsafe fn init_apic(_acpi_info: &AcpiInfo, pic: &mut ChainedPic8259) -> Apic {
 pub unsafe fn init_interrupt_control() {
     let cpu_features = read_features();
 
-    let mut pic = ChainedPic8259::new(super::idt::IRQ_START as u8);
+    let mut pic = ChainedPic8259::new(super::IRQ_START as u8);
     pic.init();
 
     if let Some(info) = &*ACPI_INFO {
@@ -37,5 +38,5 @@ pub unsafe fn init_interrupt_control() {
         }
     }
 
-    INTERRUPT_CONTROL.initialize_with(InterruptControl::Pic(SpinLock::new(pic)));
+    INTERRUPT_CONTROL.initialize_with(InterruptControl::Pic(InterruptGuard::new_lock(pic)));
 }

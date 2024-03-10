@@ -1,17 +1,12 @@
 //! All x86_64 specific stuff.
 
-mod ctx;
-pub mod devices;
-mod gdt;
-mod idt;
-mod info;
-mod init;
-mod isr_wrapper;
-mod int_control;
 pub mod acpi;
-pub use info::print_info;
+mod gdt;
+mod init;
+mod interrupts;
+pub mod shutdown;
 pub use init::init;
 
 pub const NAME: &str = "x86_64";
 
-pub use ctx::CpuContext;
+pub use interrupts::CpuContext;

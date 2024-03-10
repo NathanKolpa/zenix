@@ -4,7 +4,10 @@ use core::panic::PanicInfo;
 
 use x86_64::device::qemu::ExitCode;
 
-use crate::{arch::x86_64::devices::QEMU_DEVICE, debug_print, debug_println};
+use crate::{
+    arch::x86_64::shutdown::{shutdown_err, shutdown_ok},
+    debug_print, debug_println,
+};
 
 pub trait TestCase {
     fn run(&self, test_number: usize, test_count: usize);
@@ -42,11 +45,11 @@ pub fn runner(tests: &[&dyn TestCase]) {
 
     debug_println!("All unit tests completed successfully, shutting down...");
 
-    QEMU_DEVICE.guard().exit(ExitCode::Success);
+    shutdown_ok();
 }
 pub fn panic_handler(info: &PanicInfo) -> ! {
     debug_println!("[failed]");
     debug_println!("Error: {}", info);
     debug_println!("Unit test failed, shutting down...");
-    QEMU_DEVICE.guard().exit(ExitCode::Failed);
+    shutdown_err();
 }

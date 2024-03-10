@@ -2,7 +2,7 @@
 macro_rules! wrap_isr {
     ($outer:ident, $def:ident) => {
         #[naked]
-        extern "x86-interrupt" fn $def(_frame: InterruptStackFrame) {
+        pub extern "x86-interrupt" fn $def(_frame: InterruptStackFrame) {
             fn inner(ctx: *const x86_64::interrupt::InterruptedContext) -> *const x86_64::interrupt::InterruptedContext {
                 let new_ctx = $outer(ctx);
                 (&new_ctx) as *const _

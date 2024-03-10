@@ -45,12 +45,10 @@ fn panic(info: &PanicInfo) -> ! {
 
 /// The kernel entry point.
 #[no_mangle]
-extern "C" fn kernel_main(boot_info_ptr: *const BootInfoData) -> ! {
-    let boot_info = unsafe { BootInfo::deref_ptr(boot_info_ptr) };
+unsafe extern "C" fn kernel_main(boot_info_ptr: *const BootInfoData) -> ! {
+    let boot_info = BootInfo::deref_ptr(boot_info_ptr);
 
-    unsafe {
-        init::init(&boot_info);
-    }
+    init::init(&boot_info);
 
     #[cfg(test)]
     test_main();

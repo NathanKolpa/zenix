@@ -5,9 +5,13 @@ macro_rules! wrap_isr {
         pub extern "x86-interrupt" fn $def(_frame: ::x86_64::interrupt::InterruptStackFrame) {
             use ::x86_64::interrupt::InterruptedContext;
 
-            unsafe extern "C" fn inner(ctx: *mut InterruptedContext) {
+            // wrapping the outer with lifetime '_ prevents unsound 'static lifetime
+            fn forward(ctx: &InterruptedContext) -> Option<InterruptedContext> {
+                $outer(ctx)
+            }
 
-                match $outer(&*ctx) {
+            unsafe extern "C" fn inner(ctx: *mut InterruptedContext) {
+                match forward(&*ctx) {
                     None => {},
                     Some(new_ctx) =>  {
                         *ctx = new_ctx;

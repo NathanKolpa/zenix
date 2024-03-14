@@ -1,3 +1,5 @@
+use bootinfo::MemoryRegion;
+
 use crate::{
     rsdp_detection::{RSDP_ADDR_END, RSDP_ADDR_START},
     vga::{VGA_ADDR, VGA_LEN},
@@ -75,6 +77,9 @@ pub fn known_regions() -> impl Iterator<Item = KnownRegion> + Clone {
     .into_iter()
 }
 
-pub fn stack_size() -> u64 {
-    unsafe { &STACK_END as *const _ as u64 - (&STACK_START as *const _ as u64) }
+pub fn stack() -> MemoryRegion {
+    MemoryRegion {
+        start: unsafe { &STACK_START as *const _ as u64 },
+        size: unsafe { &STACK_END as *const _ as u64 - (&STACK_START as *const _ as u64) },
+    }
 }

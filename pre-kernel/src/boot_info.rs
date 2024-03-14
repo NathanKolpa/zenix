@@ -7,7 +7,7 @@ use crate::{
     bump_memory::BumpMemory,
     multiboot::{MultibootInfo, MultibootMMapEntry},
     paging::{align_down, align_up, PHYS_MEM_OFFSET},
-    regions::{known_regions, stack_size},
+    regions::{known_regions, stack},
 };
 
 pub fn finalize_boot_info(bump_memory: BumpMemory, kernel_boot_info: &mut BootInfoData) {
@@ -36,7 +36,7 @@ pub fn setup_boot_info<'a>(
 
     boot_info.write(BootInfoData {
         physical_memory_offset: PHYS_MEM_OFFSET as u64,
-        stack_size: stack_size(),
+        kernel_stack: stack(),
         usable_heap: null_region, // TODO: add pre kernel to this.
         usable_memory_addr: usable_memory.as_ptr() as u64,
         usable_memory_len: usable_memory.len() as u64,

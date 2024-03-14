@@ -1,12 +1,12 @@
-use core::mem::size_of;
+use core::{marker::PhantomData, mem::size_of};
 
 use crate::acpi::{SDTHeader, MADT};
 
-#[repr(C)]
-#[derive(Debug)]
+#[repr(packed, C)]
+#[derive(Debug, Clone, Copy)]
 pub struct RSDT {
     header: SDTHeader,
-    array_base: u32,
+    array_base: PhantomData<()>,
 }
 
 impl RSDT {
@@ -14,15 +14,11 @@ impl RSDT {
         &self.header
     }
 
-    pub fn iter(&self) -> impl ExactSizeIterator<Item = *const RSDTEntry> {
-        let ptr_array = unsafe {
-            core::slice::from_raw_parts(
-                (&self.array_base) as *const u32,
-                (self.header.length() - size_of::<SDTHeader>()) / 4,
-            )
-        };
-
-        ptr_array.iter().copied().map(|ptr| ptr as *const RSDTEntry)
+    pub fn entries(&self) -> impl Iterator<Item = *const RSDTEntry> {
+        RSDTEntryIter {
+            base: (&self.array_base) as *const _ as *const u32,
+            length: (self.header.length() - size_of::<SDTHeader>()) / 4,
+        }
     }
 }
 
@@ -48,5 +44,29 @@ impl RSDTEntry {
             Some("APIC") => RSDTEntryKind::Madt(unsafe { &*(self as *const _ as *const MADT) }),
             _ => RSDTEntryKind::Other(self.header()),
         }
+    }
+}
+
+struct RSDTEntryIter {
+    base: *const u32,
+    length: usize,
+}
+
+impl Iterator for RSDTEntryIter {
+    type Item = *const RSDTEntry;
+
+    fn next(&mut self) -> Option<Self::Item> {
+        if self.length == 0 {
+            return None;
+        }
+
+        let current_ptr = self.base;
+
+        self.base = unsafe { self.base.byte_add(4) };
+        self.length -= 1;
+
+        let ptr_value = unsafe { core::ptr::read_unaligned(current_ptr) };
+
+        Some(ptr_value as *const _)
     }
 }

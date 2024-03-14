@@ -1,10 +1,14 @@
-pub mod pic_8259;
+mod pic_8259;
+mod pit;
 pub mod qemu;
-pub mod uart_16550;
+mod uart_16550;
 
-#[cfg(target_arch = "x86_64")]
-#[doc(cfg(target_arch = "x86_64"))]
-pub mod apic;
+mod apic;
+
+pub use apic::*;
+pub use pic_8259::*;
+pub use pit::*;
+pub use uart_16550::*;
 
 pub trait Serial {
     fn write_available(&self) -> bool;

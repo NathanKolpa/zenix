@@ -85,6 +85,14 @@ impl<Data, Access> Port<Data, Access> {
         Data::write(self.port, value)
     }
 
+    pub unsafe fn write_atomic(&self, value: Data)
+    where
+        Access: WriteAccessMarker,
+        Data: WritePort,
+    {
+        Data::write(self.port, value)
+    }
+
     /// # Safety
     ///
     /// See `WritePort`'s safety section.

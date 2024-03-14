@@ -1,7 +1,7 @@
 use super::sum_bytes;
 
-#[repr(C)]
-#[derive(Debug)]
+#[repr(packed, C)]
+#[derive(Debug, Clone, Copy)]
 pub struct SDTHeader {
     signature: [u8; 4],
     length: u32,

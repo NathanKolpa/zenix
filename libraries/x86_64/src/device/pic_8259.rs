@@ -18,8 +18,8 @@ impl Pic8259 {
         self.write_data(self.interrupt_offset);
     }
 
-    unsafe fn write_command(&mut self, cmd: Command) {
-        self.command.write(cmd as u8);
+    unsafe fn write_command(&self, cmd: Command) {
+        self.command.write_atomic(cmd as u8);
     }
 
     unsafe fn write_data(&mut self, data: u8) {
@@ -95,25 +95,29 @@ impl ChainedPic8259 {
         }
     }
 
-    pub fn enable(&mut self) {
+    pub fn allow_all(&mut self) {
         unsafe {
             self.pics[0].write_mask(0);
             self.pics[1].write_mask(0);
         }
     }
 
-    pub fn disable(&mut self) {
+    pub fn allow_none(&mut self) {
         unsafe {
             self.pics[0].write_mask(0xff);
             self.pics[1].write_mask(0xff);
         }
     }
 
-    pub fn end_of_interrupt(&mut self, interrupt: u8) {
-        let pic = self
-            .pics
-            .iter_mut()
-            .find(|x| x.handles_interrupt(interrupt));
+    pub fn allow_timer_only(&mut self) {
+        unsafe {
+            self.pics[0].write_mask(!1);
+            self.pics[1].write_mask(0xff);
+        }
+    }
+
+    pub fn end_of_interrupt(&self, interrupt: u8) {
+        let pic = self.pics.iter().find(|x| x.handles_interrupt(interrupt));
 
         if let Some(pic) = pic {
             unsafe {

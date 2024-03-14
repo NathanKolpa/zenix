@@ -78,11 +78,15 @@ impl InterruptDescriptorTable {
     }
 
     pub fn load(&'static self) {
-        let pointer = self.pointer();
+        unsafe { self.load_unsafe() }
+    }
 
-        unsafe {
-            pointer.load_interrupt_table();
-        }
+    /// # Safety
+    ///
+    /// The caller must ensure that no interrupts are generated after the table is destructed.
+    pub unsafe fn load_unsafe(&self) {
+        let pointer = self.pointer();
+        pointer.load_interrupt_table();
     }
 
     pub fn isr_iter_mut(&mut self) -> core::slice::IterMut<'_, GateDescriptor<Isr>> {

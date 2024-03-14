@@ -16,7 +16,7 @@ pub struct MemoryRegion {
 pub struct BootInfoData {
     pub physical_memory_offset: u64,
 
-    pub stack_size: u64,
+    pub kernel_stack: MemoryRegion,
 
     pub kernel_code: MemoryRegion,
     pub bump_memory: MemoryRegion,
@@ -58,8 +58,8 @@ impl BootInfo {
         }
     }
 
-    pub fn stack_size(&self) -> usize {
-        self.data.stack_size as usize
+    pub fn kernel_stack(&self) -> MemoryRegion {
+        self.data.kernel_stack
     }
 
     pub fn kernel_code(&self) -> MemoryRegion {

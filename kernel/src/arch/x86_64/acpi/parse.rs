@@ -21,11 +21,17 @@ pub struct AcpiInfo {
     processors: Box<[AcpiProcessor]>,
 }
 
+impl AcpiInfo {
+    pub fn processor_count(&self) -> usize {
+        self.processors.len()
+    }
+}
+
 impl Display for AcpiInfo {
     fn fmt(&self, f: &mut core::fmt::Formatter<'_>) -> core::fmt::Result {
         writeln!(f, "Acpi info:")?;
 
-        writeln!(f, "\tProcessor count: {:?}", self.processors.len())?;
+        writeln!(f, "\tProcessor count: {:?}", self.processor_count())?;
 
         if let Some(oem) = self.oem_id {
             writeln!(f, "\tOEM:             {oem}")?;

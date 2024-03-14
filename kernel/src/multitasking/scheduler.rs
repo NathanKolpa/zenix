@@ -4,7 +4,7 @@ mod thread_box;
 
 use core::sync::atomic::{AtomicBool, AtomicUsize, Ordering};
 
-use crate::arch::CpuContext;
+use crate::{arch::CpuContext, utils::ProcLocal};
 
 use alloc::boxed::Box;
 use essentials::{
@@ -27,6 +27,8 @@ const PRIORITY_LEVELS: usize = 1;
 
 // TOOD: nodes and dummy nodes to the eternal alloc.
 
+struct ProcessorData {}
+
 pub struct Scheduler {
     id_autoincrement: AtomicUsize,
     run_queues: PanicOnce<FixedVec<PRIORITY_LEVELS, Queue<Thread>>>,
@@ -34,21 +36,21 @@ pub struct Scheduler {
     allocated_threads: AtomicUsize,
     allocation_exceeded: AtomicBool,
 
-    // TOOD: once multiprocessing is implemented, this should be thread local storage.
-    current_thread: SpinLock<Option<&'static mut QueueNode<Thread>>>,
-    current_thread_id: AtomicUsize,
+    current_thread: PanicOnce<ProcLocal<SpinLock<Option<&'static mut QueueNode<Thread>>>>>,
+    current_thread_id: PanicOnce<ProcLocal<AtomicUsize>>,
 }
 
 impl Scheduler {
     const fn new() -> Self {
         Self {
             id_autoincrement: AtomicUsize::new(0),
-            current_thread: SpinLock::new(None),
             run_queues: PanicOnce::new(),
             retired_threads: PanicOnce::new(),
             allocated_threads: AtomicUsize::new(0),
             allocation_exceeded: AtomicBool::new(false),
-            current_thread_id: AtomicUsize::new(0),
+
+            current_thread: PanicOnce::new(),
+            current_thread_id: PanicOnce::new(),
         }
     }
 
@@ -70,6 +72,12 @@ impl Scheduler {
 
         self.retired_threads
             .initialize_with(Queue::new(Box::leak(Box::new(DummyNode::new()))));
+
+        self.current_thread
+            .initialize_with(ProcLocal::new(|| SpinLock::new(None)));
+
+        self.current_thread_id
+            .initialize_with(ProcLocal::new(|| AtomicUsize::new(0)));
     }
 
     pub fn current_as_thread(&self, priority: ThreadPriority) -> Result<ThreadId, SchedulerError> {

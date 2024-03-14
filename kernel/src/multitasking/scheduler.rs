@@ -27,8 +27,6 @@ const PRIORITY_LEVELS: usize = 1;
 
 // TOOD: nodes and dummy nodes to the eternal alloc.
 
-struct ProcessorData {}
-
 pub struct Scheduler {
     id_autoincrement: AtomicUsize,
     run_queues: PanicOnce<FixedVec<PRIORITY_LEVELS, Queue<Thread>>>,

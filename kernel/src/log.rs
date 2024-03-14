@@ -10,7 +10,7 @@ pub static CHANNEL: Singleton<SerialChannel<Uart16550>> =
 use core::fmt::Write;
 
 use essentials::spin::Singleton;
-use x86_64::device::uart_16550::Uart16550;
+use x86_64::device::Uart16550;
 
 use crate::log::serial_channel::SerialChannel;
 

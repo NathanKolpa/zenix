@@ -31,14 +31,12 @@ impl Debug for AcpiError {
                     f,
                     "System Descriptor table checksum with signature {sig:?} is incorrect"
                 )
-
-            },
-            AcpiError::MapEntryError(inner) =>{ 
+            }
+            AcpiError::MapEntryError(inner) => {
                 write!(
                     f,
                     "Could not map the Root system description table ({inner:?})"
                 )
-
             }
         }
     }

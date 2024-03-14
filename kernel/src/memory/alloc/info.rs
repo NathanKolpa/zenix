@@ -26,7 +26,7 @@ impl MemoryInfo {
             bump: boot_info.bump_memory().size as usize,
             kernel_code: boot_info.kernel_code().size as usize,
             kernel_heap: boot_info.usable_heap().size as usize,
-            kernel_stack: boot_info.stack_size(),
+            kernel_stack: boot_info.kernel_stack().size as usize,
         }
     }
 }

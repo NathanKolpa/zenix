@@ -20,7 +20,7 @@ pub unsafe fn init(bootinfo: &BootInfo, mapper: &mut MemoryMapper) {
     }
 
     let features = cpuid::read_features();
-    info_println!("CPUID features: {features}");
+    info_println!("CPU features: {features}");
 
     init_interrupt_control();
 

@@ -10,7 +10,7 @@ pub fn tick(current_context: CpuContext) -> CpuContext {
         return next_context;
     }
 
-    todo!()
+    todo!("Idle task is not implemented")
 }
 
 pub fn unhandled_irq() {

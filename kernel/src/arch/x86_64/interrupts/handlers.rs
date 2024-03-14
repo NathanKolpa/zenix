@@ -26,7 +26,7 @@ fn tick(ctx: &InterruptedContext) -> Option<InterruptedContext> {
 
     match &*INTERRUPT_CONTROL {
         InterruptControl::Pic(pic) => {
-            pic.guard().lock().end_of_interrupt(super::TIMER_IRQ as u8);
+            pic.end_of_interrupt(super::TIMER_IRQ as u8);
         }
         InterruptControl::Apic(apic) => {
             apic.end_of_interrupt();

@@ -8,6 +8,7 @@
 #![feature(naked_functions)]
 #![feature(allocator_api)]
 #![feature(const_mut_refs)]
+#![feature(asm_const)]
 // TODO: remove when the kernel gets sufficiently complete.
 #![allow(dead_code)]
 

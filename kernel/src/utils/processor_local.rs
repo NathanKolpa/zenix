@@ -4,7 +4,8 @@ use alloc::{boxed::Box, vec::Vec};
 
 use crate::arch::x86_64::mp::{processor_count, processor_id};
 
-/// Like a thread local storage but for processors
+/// Like a thread local storage (TLS) but for processors, but unlike TLS this container does not
+/// garantee thread safety.
 pub struct ProcLocal<T> {
     proc_storage: Box<[T]>,
 }

@@ -9,6 +9,12 @@ use x86_64::{
     RFlags,
 };
 
+/// A container that ensures interrupts are disabled when the inner data is accessed and restores
+/// the interrupt enable flag when the data is no longer accessed.
+/// Safety should not rely on the fact that interrupts are actually disabled. It's still perfectly
+/// safe to call [`enable_interrupts`] while a [`InterruptLockGuard`] is active.
+/// The use-case for this container is to prevent deadlocks when using [`SpinLock`], so that the
+/// user cannot forget to disable interrupts.
 pub struct InterruptLockGuard<'a, T> {
     lock: &'a InterruptGuard<T>,
     ints_enabled: bool,

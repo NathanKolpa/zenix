@@ -11,11 +11,11 @@ pub struct ProcLocal<T> {
 
 impl<T> ProcLocal<T> {
     pub fn new(mut factory: impl FnMut() -> T) -> Self {
-        let processor_count = processor_count();
+        let count = processor_count();
 
-        let mut vec = Vec::with_capacity(processor_count);
+        let mut vec = Vec::with_capacity(count);
 
-        for _ in 0..processor_count {
+        for _ in 0..count {
             vec.push(factory())
         }
 

@@ -26,6 +26,11 @@ fn init_idt() -> InterruptDescriptorTable {
         .set_handler(kernel_segment, double_fault_handler);
     idt.double_fault.set_stack_index(DOUBLE_FAULT_IST_INDEX);
 
+    // not setting the stack_index is important, because the page fault handler might switch
+    // context. In case the kernel stack caused an overflow then a double fault will be triggered.
+    idt.page_fault
+        .set_handler(kernel_segment, page_fault_handler);
+
     idt[InterruptDescriptorTable::STANDARD_INTERRUPTS_COUNT + 0x04]
         .set_handler(kernel_segment, uart_status_change_isr);
 

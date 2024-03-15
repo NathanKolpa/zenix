@@ -1,4 +1,4 @@
-use crate::{arch::CpuContext, multitasking::SCHEDULER};
+use crate::{arch::CpuContext, memory::map::manager::PageFault, multitasking::SCHEDULER};
 use crate::{log, warning_println};
 
 pub fn uart_status_change() {
@@ -15,4 +15,8 @@ pub fn tick(current_context: CpuContext) -> CpuContext {
 
 pub fn unhandled_irq() {
     warning_println!("Unhandled IRQ");
+}
+
+pub fn page_fault(fault: PageFault) -> Option<CpuContext> {
+    panic!("{fault:?}");
 }

@@ -7,7 +7,12 @@ const INCOMPLETE_STATE: u8 = 0;
 const LOCKED_STATE: u8 = 1;
 const COMPLETE_STATE: u8 = 2;
 
-/// An alternative to [`super::spin::SpinOnce`] but instead of spinning [`PanicOnce`] calls panic on lock.
+/// An uninitialized variable like [`MaybeUninit`] but safety is guaranteed because
+/// when accessing (through [`Deref`]) uninitialized data, the thread will panic. This container can only be written to
+/// a single time like [`crate::spin::SpinOnce`]. Writing more than once will result in a panic.
+/// Hence the name, "PanicOnce".
+/// This container is specifically designed for initializing static variables where `const fn` is not
+/// possible.
 pub struct PanicOnce<T> {
     state: AtomicU8,
     data: UnsafeCell<MaybeUninit<T>>,
@@ -35,7 +40,7 @@ impl<T> PanicOnce<T> {
             )
             .is_err()
         {
-            panic!("Already initialized");
+            panic!("PanicOnce is already initialized");
         }
 
         unsafe {
@@ -46,8 +51,13 @@ impl<T> PanicOnce<T> {
     }
 
     fn guard(&self) {
-        if self.is_initialized() {
-            panic!("Not initialized");
+        match self.state.load(Ordering::Relaxed) {
+            COMPLETE_STATE => {}
+            INCOMPLETE_STATE => panic!("PanicOnce is not initialized"),
+            LOCKED_STATE => {
+                panic!("PanicOnce is being initialized at the time of access by another thread")
+            }
+            _ => panic!("PanicOnce in an unexpected state"),
         }
     }
 

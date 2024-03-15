@@ -3,7 +3,8 @@ use core::ops::Deref;
 use crate::spin::SpinOnce;
 
 /// A lazy singleton that initializes when accessed for the first time.
-/// Concurrency-safety is guaranteed though [`SpinOnce`].
+/// Concurrency-safety is guaranteed though [`SpinOnce`]. Created for cases where constructors
+/// cannot be `const` but initialization order is trivial. For cases where the order of initialization is required more robust, use [`crate::PanicOnce`] instead.
 pub struct Singleton<T> {
     data: SpinOnce<T>,
     initializer: fn() -> T,

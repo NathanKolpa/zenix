@@ -1,6 +1,5 @@
 use crate::segmentation::SegmentSelector;
 use crate::RFlags;
-use essentials::address::VirtualAddress;
 
 /// All cpu registers that are relevant when interrupting a program.
 #[repr(C)]

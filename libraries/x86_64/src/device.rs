@@ -33,13 +33,17 @@ pub trait FrameBuffer {
     }
 }
 
-pub trait TextBuffer {
+pub trait TextBufferWriter {
     fn put(&mut self, x: usize, y: usize, value: char);
     fn put_str(&mut self, x: usize, y: usize, value: &str);
 }
 
+pub trait TextBufferReader {
+    fn get(&self, x: usize, y: usize) -> char;
+}
+
 #[derive(Clone, Copy)]
-pub enum TextBufferColour {
+pub enum TextColour {
     Black,
     Blue,
     Green,
@@ -52,14 +56,14 @@ pub enum TextBufferColour {
     Yellow,
 }
 
-pub trait ColouredTextBuffer {
+pub trait ColouredTextBufferWriter {
     fn put_coloured(
         &mut self,
         x: usize,
         y: usize,
         value: char,
-        foreground: TextBufferColour,
-        background: TextBufferColour,
+        foreground: TextColour,
+        background: TextColour,
     );
 
     fn put_coloured_str(
@@ -67,8 +71,8 @@ pub trait ColouredTextBuffer {
         mut x: usize,
         mut y: usize,
         value: &str,
-        foreground: TextBufferColour,
-        background: TextBufferColour,
+        foreground: TextColour,
+        background: TextColour,
     ) where
         Self: Sized + FrameBuffer,
     {
@@ -88,27 +92,30 @@ pub trait ColouredTextBuffer {
     }
 }
 
-impl<T> TextBuffer for T
+pub trait ColouredTextBufferReader {
+    fn get_coloured(&self, x: usize, y: usize) -> (char, TextColour, TextColour);
+}
+
+impl<T> TextBufferWriter for T
 where
-    T: ColouredTextBuffer + FrameBuffer,
+    T: ColouredTextBufferWriter + FrameBuffer,
 {
     fn put(&mut self, x: usize, y: usize, value: char) {
-        self.put_coloured(
-            x,
-            y,
-            value,
-            TextBufferColour::White,
-            TextBufferColour::Black,
-        );
+        self.put_coloured(x, y, value, TextColour::White, TextColour::Black);
     }
 
     fn put_str(&mut self, x: usize, y: usize, value: &str) {
-        self.put_coloured_str(
-            x,
-            y,
-            value,
-            TextBufferColour::White,
-            TextBufferColour::Black,
-        );
+        self.put_coloured_str(x, y, value, TextColour::White, TextColour::Black);
+    }
+}
+
+impl<T> TextBufferReader for T
+where
+    T: ColouredTextBufferReader,
+{
+    fn get(&self, x: usize, y: usize) -> char {
+        let (char, _, _) = self.get_coloured(x, y);
+
+        char
     }
 }

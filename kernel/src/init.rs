@@ -42,14 +42,13 @@ pub unsafe fn init(boot_info: &BootInfo) {
     debug_println!("Kernel virtual memory shared");
 
     SCHEDULER.init();
-    debug_println!("SCHEDULER initialized");
-
-    PROCESS_TABLE.init();
-    debug_println!("PROCESS_TABLE initialized");
 
     let kernel_tid = SCHEDULER
         .current_as_kernel_thread(LOWEST_PRIORITY)
         .expect("calling current_as_kernel_thread should never fail in init()");
 
-    debug_println!("Scheduler initialized; kernel thread id: {kernel_tid}");
+    debug_println!("sCHEDULER initialized; kernel thread id: {kernel_tid}");
+
+    PROCESS_TABLE.init();
+    debug_println!("PROCESS_TABLE initialized");
 }

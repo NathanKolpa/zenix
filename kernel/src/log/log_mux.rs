@@ -1,0 +1,32 @@
+use super::Logger;
+
+pub struct SerialMux<A, B> {
+    a: A,
+    b: B,
+}
+
+impl<A, B> SerialMux<A, B>
+where
+    A: Logger,
+    B: Logger,
+{
+    pub const fn new(a: A, b: B) -> Self {
+        Self { a, b }
+    }
+}
+
+impl<A, B> Logger for SerialMux<A, B>
+where
+    A: Logger,
+    B: Logger,
+{
+    fn log(&self, level: super::LogLevel, args: core::fmt::Arguments<'_>) {
+        self.a.log(level, args);
+        self.b.log(level, args);
+    }
+
+    fn flush(&self) {
+        self.a.flush();
+        self.b.flush();
+    }
+}

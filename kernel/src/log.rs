@@ -2,17 +2,16 @@
 
 #![macro_use]
 
-mod serial_channel;
+mod buffer_logger;
+mod log_mux;
+mod serial_logger;
 
-pub static CHANNEL: Singleton<SerialChannel<Uart16550>> =
-    Singleton::new(|| SerialChannel::new(unsafe { Uart16550::new_and_init(0x3F8) }));
-
-use core::fmt::Write;
+use core::fmt::Arguments;
 
 use essentials::spin::Singleton;
-use x86_64::device::Uart16550;
+use x86_64::device::{Uart16550, VgaBuffer};
 
-use crate::log::serial_channel::SerialChannel;
+use crate::log::{buffer_logger::BufferLogger, log_mux::SerialMux, serial_logger::SerialLogger};
 
 /// Information that is diagnostically helpful to people more than just developers.
 #[macro_export]
@@ -67,6 +66,7 @@ macro_rules! debug_println {
 }
 
 #[doc(hidden)]
+#[derive(Clone, Copy)]
 pub enum LogLevel {
     Debug,
     Warn,
@@ -74,27 +74,26 @@ pub enum LogLevel {
     Info,
 }
 
-impl LogLevel {
-    pub fn ansi_color_str(&self) -> &'static str {
-        match self {
-            LogLevel::Debug => "\x1b[90m",
-            LogLevel::Warn => "\x1b[33m",
-            LogLevel::Error => "\x1b[31m",
-            LogLevel::Info => "\x1b[36m",
-        }
-    }
+trait Logger {
+    fn log(&self, level: LogLevel, args: Arguments<'_>);
+    fn flush(&self);
 }
+
+pub fn flush_availible() {
+    CHANNEL.flush();
+}
+
+static CHANNEL: Singleton<SerialMux<SerialLogger<Uart16550>, BufferLogger<VgaBuffer>>> =
+    Singleton::new(|| unsafe {
+        SerialMux::new(
+            SerialLogger::new(Uart16550::new_and_init(0x3F8)),
+            BufferLogger::new(VgaBuffer::new()),
+        )
+    });
 
 #[doc(hidden)]
 pub fn _channel_print(level: LogLevel, args: core::fmt::Arguments) {
-    let color_str = level.ansi_color_str();
-    let reset_str = "\x1b[0m";
-
-    let mut writer = CHANNEL.writer();
-
-    writer.write_str(color_str).unwrap();
-    writer.write_fmt(args).unwrap();
-    writer.write_str(reset_str).unwrap();
+    CHANNEL.log(level, args);
 }
 
-pub const CHANNEL_NAME: &str = "16550 UART (Serial)";
+pub const CHANNEL_NAME: &str = "16550 UART (Serial) + VGA (Text buffer)";

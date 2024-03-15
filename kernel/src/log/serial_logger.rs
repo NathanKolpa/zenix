@@ -1,14 +1,19 @@
+use core::fmt::Write;
+
 use essentials::{nb::BoundedQueue, spin::SpinLock};
 use x86_64::{device::Serial, RFlags};
 
-use crate::utils::InterruptGuard;
+use crate::{
+    log::{LogLevel, Logger},
+    utils::InterruptGuard,
+};
 
-pub struct SerialChannel<C> {
+pub struct SerialLogger<C> {
     queue: BoundedQueue<1024, u8>,
     serial: InterruptGuard<SpinLock<C>>,
 }
 
-impl<C> SerialChannel<C>
+impl<C> SerialLogger<C>
 where
     C: Serial,
 {
@@ -62,12 +67,12 @@ where
     }
 
     pub fn writer(&self) -> impl core::fmt::Write + '_ {
-        Writer { channel: self }
+        Writer { logger: self }
     }
 }
 
 struct Writer<'a, C> {
-    channel: &'a SerialChannel<C>,
+    logger: &'a SerialLogger<C>,
 }
 
 impl<'a, C> core::fmt::Write for Writer<'a, C>
@@ -75,7 +80,32 @@ where
     C: Serial,
 {
     fn write_str(&mut self, s: &str) -> core::fmt::Result {
-        self.channel.write_bytes(s.as_bytes());
+        self.logger.write_bytes(s.as_bytes());
         Ok(())
+    }
+}
+
+impl<T> Logger for SerialLogger<T>
+where
+    T: Serial,
+{
+    fn log(&self, level: LogLevel, args: core::fmt::Arguments<'_>) {
+        let colour_str = match level {
+            LogLevel::Debug => "\x1b[90m",
+            LogLevel::Warn => "\x1b[33m",
+            LogLevel::Error => "\x1b[31m",
+            LogLevel::Info => "\x1b[36m",
+        };
+
+        let reset_str = "\x1b[0m";
+
+        let mut writer = self.writer();
+        _ = writer.write_str(colour_str);
+        _ = writer.write_fmt(args);
+        _ = writer.write_str(reset_str);
+    }
+
+    fn flush(&self) {
+        self.flush_availible();
     }
 }

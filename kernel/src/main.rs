@@ -64,7 +64,7 @@ unsafe extern "C" fn kernel_main(boot_info_ptr: *const BootInfoData) -> ! {
     print_info(&boot_info);
 
     init::init(&boot_info);
-    info_println!("System initialization complete");
+    info_println!("Kernel initialization complete");
 
     enable_interrupts();
 

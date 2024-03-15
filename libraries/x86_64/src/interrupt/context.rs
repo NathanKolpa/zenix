@@ -27,17 +27,17 @@ pub struct RegisterContext {
 #[repr(C)]
 #[derive(Debug, Clone, Default)]
 pub struct InterruptStackFrame {
-    pub instruction_pointer: VirtualAddress,
+    pub instruction_pointer: u64,
     pub code_segment: u64,
     pub cpu_flags: RFlags,
-    pub stack_pointer: VirtualAddress,
+    pub stack_pointer: u64,
     pub stack_segment: u64,
 }
 
 impl InterruptStackFrame {
-    pub fn new(
-        instruction_pointer: VirtualAddress,
-        stack_pointer: VirtualAddress,
+    pub const unsafe fn new(
+        instruction_pointer: u64,
+        stack_pointer: u64,
         cpu_flags: RFlags,
         code_segment: SegmentSelector,
         stack_segment: SegmentSelector,
@@ -71,7 +71,7 @@ impl InterruptedContext {
                 r10: 0,
                 r9: 0,
                 r8: 0,
-                rbp: interrupt_stack_frame.stack_pointer.as_u64(),
+                rbp: interrupt_stack_frame.stack_pointer,
                 rsi: 0,
                 rdi: 0,
                 rdx: 0,

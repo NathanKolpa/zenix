@@ -1,11 +1,11 @@
 use super::Logger;
 
-pub struct SerialMux<A, B> {
+pub struct LoggerMux<A, B> {
     a: A,
     b: B,
 }
 
-impl<A, B> SerialMux<A, B>
+impl<A, B> LoggerMux<A, B>
 where
     A: Logger,
     B: Logger,
@@ -15,7 +15,7 @@ where
     }
 }
 
-impl<A, B> Logger for SerialMux<A, B>
+impl<A, B> Logger for LoggerMux<A, B>
 where
     A: Logger,
     B: Logger,

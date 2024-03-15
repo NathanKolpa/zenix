@@ -115,7 +115,6 @@ where
 {
     fn get(&self, x: usize, y: usize) -> char {
         let (char, _, _) = self.get_coloured(x, y);
-
         char
     }
 }

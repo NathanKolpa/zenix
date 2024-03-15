@@ -1,5 +1,7 @@
 use core::fmt::Display;
 
+use essentials::display::Quoteless;
+
 pub struct CpuFeatures {
     ecx: u64,
     edx: u64,
@@ -24,11 +26,11 @@ impl Display for CpuFeatures {
         let mut set = f.debug_set();
 
         if self.sse3() {
-            set.entry(&"SSE3");
+            set.entry(&Quoteless::new("SSE3"));
         }
 
         if self.apic() {
-            set.entry(&"APIC");
+            set.entry(&Quoteless::new("APIC"));
         }
 
         set.finish()

@@ -1,64 +1,44 @@
 use essentials::address::VirtualAddress;
 use x86_64::{
-    device::{ColouredTextBuffer, FrameBuffer, TextBufferColour, VgaBuffer},
+    device::{ColouredTextBufferWriter, FrameBuffer, TextColour, VgaBuffer},
     port::Port,
 };
 
 pub fn set_fail_msg(message: &str) {
-    let mut cursor = msg(
-        "Failure",
-        STATUS_START,
-        TextBufferColour::Red,
-        TextBufferColour::Black,
-    );
+    let mut cursor = msg("Failure", STATUS_START, TextColour::Red, TextColour::Black);
 
     cursor = msg(
         "Reason: ",
         next_line(cursor),
-        TextBufferColour::Red,
-        TextBufferColour::Black,
+        TextColour::Red,
+        TextColour::Black,
     );
 
-    cursor = msg(
-        message,
-        cursor,
-        TextBufferColour::Red,
-        TextBufferColour::Black,
-    );
+    cursor = msg(message, cursor, TextColour::Red, TextColour::Black);
 
     msg(
         "Halting CPU. Reset your machine to try again.",
         next_line(cursor),
-        TextBufferColour::Red,
-        TextBufferColour::Black,
+        TextColour::Red,
+        TextColour::Black,
     );
 }
 
-const RUNNING_MSG: &str = "Running pre kernel: ";
+const RUNNING_MSG: &str = "Running Pre-kernel: ";
 const STATUS_START: usize = RUNNING_MSG.len();
 
 pub fn set_running_msg() {
-    msg(
-        RUNNING_MSG,
-        0,
-        TextBufferColour::White,
-        TextBufferColour::Black,
-    );
+    msg(RUNNING_MSG, 0, TextColour::White, TextColour::Black);
 }
 
 pub fn set_success_msg() {
-    let cursor = msg(
-        "Ok",
-        STATUS_START,
-        TextBufferColour::Green,
-        TextBufferColour::Black,
-    );
+    let cursor = msg("Ok", STATUS_START, TextColour::Green, TextColour::Black);
 
     msg(
-        "Entering the Zenix kernel...",
+        "Entering the Kernel",
         next_line(cursor),
-        TextBufferColour::White,
-        TextBufferColour::Black,
+        TextColour::White,
+        TextColour::Black,
     );
 }
 
@@ -70,7 +50,7 @@ pub fn clear_screen() {
     let mut buffer = unsafe { VgaBuffer::new() };
 
     for (x, y) in buffer.iter_all_pos() {
-        buffer.put_coloured(x, y, ' ', TextBufferColour::Black, TextBufferColour::Black);
+        buffer.put_coloured(x, y, ' ', TextColour::Black, TextColour::Black);
     }
 
     disable_cursor();
@@ -86,7 +66,7 @@ fn disable_cursor() {
     }
 }
 
-fn msg(message: &str, start: usize, fg: TextBufferColour, bg: TextBufferColour) -> usize {
+fn msg(message: &str, start: usize, fg: TextColour, bg: TextColour) -> usize {
     let mut buffer = unsafe { VgaBuffer::new() };
 
     buffer.put_coloured_str(

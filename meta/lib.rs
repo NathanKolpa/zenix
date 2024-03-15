@@ -5,6 +5,7 @@ pub struct RunnerOptions {
     pub gdb: bool,
     pub verbose: bool,
     pub n_proc: Option<usize>,
+    pub hide: bool,
 }
 
 pub fn run(opts: &RunnerOptions) {
@@ -19,7 +20,6 @@ pub fn run(opts: &RunnerOptions) {
     cmd.args(["-machine", "type=pc-i440fx-3.1"]);
     cmd.args(["-serial", "stdio"]);
     cmd.args(["-device", "isa-debug-exit"]);
-    cmd.args(["-display", "gtk"]);
     cmd.args(["-kernel", pre_kernel_path]);
     cmd.args(["-initrd", kernel_path]);
 
@@ -29,6 +29,10 @@ pub fn run(opts: &RunnerOptions) {
 
     if opts.verbose {
         cmd.args(["-d", "int"]);
+    }
+
+    if opts.hide {
+        cmd.args(["-display", "none"]);
     }
 
     let n_proc = opts.n_proc.unwrap_or(8);

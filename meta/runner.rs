@@ -22,6 +22,7 @@ fn main() -> Result<(), CliError> {
         match arg.as_str() {
             "--verbose" | "-v" => opts.verbose = true,
             "--gdb" | "-d" => opts.gdb = true,
+            "--hide" | "-h" => opts.hide = true,
             _ => {
                 return Err(CliError::UnexpectedArg(arg));
             }

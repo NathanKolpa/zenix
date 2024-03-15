@@ -37,7 +37,11 @@ pub fn page_fault(ctx: &InterruptErrorContext<PageFaultErrorCode>) -> Option<Int
     };
 
     let fault = PageFault {
-        instruction_pointer: ctx.context.interrupt_stack_frame().instruction_pointer,
+        instruction_pointer: ctx
+            .context
+            .interrupt_stack_frame()
+            .instruction_pointer
+            .into(),
         addr,
         access,
         violation,

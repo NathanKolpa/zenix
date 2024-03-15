@@ -10,3 +10,4 @@ mod entry;
 mod flags;
 mod page_table;
 mod size;
+pub mod cr2;

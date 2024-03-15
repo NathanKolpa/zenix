@@ -12,7 +12,7 @@ pub struct PageFaultErrorCode {
 
 impl PageFaultErrorCode {
     pub fn protection_violation(&self) -> bool {
-        self.value & 1 != 0
+        (self.value & 1) != 0
     }
 
     pub fn caused_by_write(&self) -> bool {

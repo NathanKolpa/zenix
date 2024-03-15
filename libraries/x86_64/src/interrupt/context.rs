@@ -55,12 +55,12 @@ impl InterruptStackFrame {
 #[derive(Clone, Debug, Default)]
 #[repr(C)]
 pub struct InterruptedContext {
-    pub registers: RegisterContext,
-    pub interrupt_stack_frame: InterruptStackFrame,
+    registers: RegisterContext,
+    interrupt_stack_frame: InterruptStackFrame,
 }
 
 impl InterruptedContext {
-    pub fn start_new(interrupt_stack_frame: InterruptStackFrame) -> Self {
+    pub const unsafe fn start_new(interrupt_stack_frame: InterruptStackFrame) -> Self {
         Self {
             registers: RegisterContext {
                 r15: 0,
@@ -82,4 +82,15 @@ impl InterruptedContext {
             interrupt_stack_frame,
         }
     }
+
+    pub fn interrupt_stack_frame(&self) -> &InterruptStackFrame {
+        &self.interrupt_stack_frame
+    }
+}
+
+#[derive(Clone, Debug, Default)]
+#[repr(C)]
+pub struct InterruptErrorContext<E> {
+    pub context: InterruptedContext,
+    pub error: E,
 }

@@ -4,6 +4,7 @@
 #![feature(custom_test_frameworks)]
 #![test_runner(test_runner::runner)]
 #![feature(abi_x86_interrupt)]
+#![feature(const_mut_refs)]
 #![feature(doc_cfg)]
 
 #[cfg(any(target_arch = "x86_64", target_arch = "x86"))]

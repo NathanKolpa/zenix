@@ -1,25 +1,14 @@
 use bootinfo::BootInfo;
-use x86_64::interrupt::enable_interrupts;
 
 use crate::{
-    info_print,
     memory::{
-        alloc::{kernel_alloc::KERNEL_ALLOC, MemoryInfo, FRAME_ALLOC},
+        alloc::{kernel_alloc::KERNEL_ALLOC, FRAME_ALLOC},
         map::MemoryMapper,
     },
-    multitasking::{scheduler::LOWEST_PRIORITY, SCHEDULER},
+    multitasking::{scheduler::LOWEST_PRIORITY, PROCESS_TABLE, SCHEDULER},
 };
 
-use crate::{arch, debug_println, info_println};
-
-fn print_info(boot_info: &BootInfo) {
-    info_println!("Architecture: {}", arch::NAME);
-    info_println!("Debug channel: {}", crate::log::CHANNEL_NAME);
-    if let Some(bootloader_name) = boot_info.bootloader_name() {
-        info_println!("Bootloader: {bootloader_name}");
-    }
-    info_print!("{}", MemoryInfo::from_boot_info(boot_info));
-}
+use crate::{arch, debug_println};
 
 /// Initialize and start the operating system.
 ///
@@ -27,8 +16,6 @@ fn print_info(boot_info: &BootInfo) {
 ///
 /// The argument `boot_info` should contain a valid memory map for the machine.
 pub unsafe fn init(boot_info: &BootInfo) {
-    info_println!("Staring the Zenix operating system...");
-
     // Initializing the heap is also very important to do first.
     // Even the frame allocator uses the heap!
     let heap = boot_info.usable_heap();
@@ -51,19 +38,18 @@ pub unsafe fn init(boot_info: &BootInfo) {
 
     arch::init(boot_info, &mut kernel_mem);
 
-    print_info(boot_info);
-
     kernel_mem.share_all();
     debug_println!("Kernel virtual memory shared");
 
     SCHEDULER.init();
+    debug_println!("SCHEDULER initialized");
+
+    PROCESS_TABLE.init();
+    debug_println!("PROCESS_TABLE initialized");
+
     let kernel_tid = SCHEDULER
         .current_as_kernel_thread(LOWEST_PRIORITY)
         .expect("calling current_as_kernel_thread should never fail in init()");
 
     debug_println!("Scheduler initialized; kernel thread id: {kernel_tid}");
-
-    debug_println!("Graceull exit");
-
-    enable_interrupts();
 }

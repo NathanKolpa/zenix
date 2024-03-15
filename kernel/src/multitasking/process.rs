@@ -1,3 +1,5 @@
+pub mod process_table;
+
 use core::sync::atomic::AtomicUsize;
 
 use crate::memory::map::MemoryManager;

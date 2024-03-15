@@ -29,6 +29,8 @@ use core::panic::PanicInfo;
 
 use bootinfo::{BootInfo, BootInfoData};
 
+use x86_64::{halt_loop, interrupt::*};
+
 /// The kernel panic handler.
 #[cfg(not(test))]
 #[panic_handler]
@@ -44,12 +46,27 @@ fn panic(info: &PanicInfo) -> ! {
     testing::panic_handler(info)
 }
 
+fn print_info(boot_info: &BootInfo) {
+    info_println!("Architecture: {}", arch::NAME);
+    info_println!("Debug channel: {}", crate::log::CHANNEL_NAME);
+    if let Some(bootloader_name) = boot_info.bootloader_name() {
+        info_println!("Bootloader: {bootloader_name}");
+    }
+    info_print!("{}", memory::alloc::MemoryInfo::from_boot_info(boot_info));
+}
+
 /// The kernel entry point.
 #[no_mangle]
 unsafe extern "C" fn kernel_main(boot_info_ptr: *const BootInfoData) -> ! {
     let boot_info = BootInfo::deref_ptr(boot_info_ptr);
 
+    info_println!("Staring the Zenix operating system...");
+    print_info(&boot_info);
+
     init::init(&boot_info);
+    info_println!("System initialization complete");
+
+    enable_interrupts();
 
     #[cfg(test)]
     test_main();
@@ -58,13 +75,5 @@ unsafe extern "C" fn kernel_main(boot_info_ptr: *const BootInfoData) -> ! {
 }
 
 fn run() -> ! {
-    use x86_64::interrupt::*;
-
-    loop {
-        disable_interrupts();
-
-        // Do work mabye..
-
-        enable_interrupts_and_halt();
-    }
+    halt_loop()
 }

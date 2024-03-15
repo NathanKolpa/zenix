@@ -1,7 +1,7 @@
 use super::{InterruptControl, INTERRUPT_CONTROL};
 use crate::{
     interface::interrupts as kernel_interface,
-    memory::map::manager::{MemoryAccess, MemoryViolation, PageFault},
+    memory::map::{MemoryAccess, MemoryViolation, PageFault},
 };
 use x86_64::{
     interrupt::{

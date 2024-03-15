@@ -1,6 +1,7 @@
-use crate::arch::CpuContext;
-
-pub type ThreadId = usize;
+use crate::{
+    arch::CpuContext,
+    multitasking::{ids::ThreadId, process::ProcessId},
+};
 
 pub type ThreadPriority = u8;
 
@@ -10,6 +11,7 @@ pub struct Thread {
     thread_id: ThreadId,
     spawned_by: Option<ThreadId>,
     priority: ThreadPriority,
+    process_id: Option<ProcessId>,
 
     context: CpuContext,
 }
@@ -19,11 +21,13 @@ impl Thread {
         thread_id: ThreadId,
         spawned_by: Option<ThreadId>,
         priority: ThreadPriority,
+        process_id: Option<ProcessId>,
         context: CpuContext,
     ) -> Self {
         Self {
             thread_id,
             spawned_by,
+            process_id,
             priority,
             context,
         }

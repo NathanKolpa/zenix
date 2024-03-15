@@ -58,11 +58,12 @@ pub unsafe fn init(boot_info: &BootInfo) {
 
     SCHEDULER.init();
     let kernel_tid = SCHEDULER
-        .current_as_thread(LOWEST_PRIORITY)
-        .expect("calling current_as_thread should never fail in init()");
+        .current_as_kernel_thread(LOWEST_PRIORITY)
+        .expect("calling current_as_kernel_thread should never fail in init()");
 
     debug_println!("Scheduler initialized; kernel thread id: {kernel_tid}");
 
     debug_println!("Graceull exit");
+
     enable_interrupts();
 }

@@ -4,7 +4,14 @@ mod thread_box;
 
 use core::sync::atomic::{AtomicBool, AtomicUsize, Ordering};
 
-use crate::{arch::CpuContext, utils::ProcLocal};
+use crate::{
+    arch::CpuContext,
+    multitasking::{
+        ids::{AtomicProcThreadId, AtomicThreadId, ThreadId},
+        process::ProcessId,
+    },
+    utils::ProcLocal,
+};
 
 use alloc::boxed::Box;
 use essentials::{
@@ -28,20 +35,20 @@ const PRIORITY_LEVELS: usize = 1;
 // TOOD: nodes and dummy nodes to the eternal alloc.
 
 pub struct Scheduler {
-    id_autoincrement: AtomicUsize,
+    id_autoincrement: AtomicThreadId,
     run_queues: PanicOnce<FixedVec<PRIORITY_LEVELS, Queue<Thread>>>,
     retired_threads: PanicOnce<Queue<Thread>>,
     allocated_threads: AtomicUsize,
     allocation_exceeded: AtomicBool,
 
     current_thread: PanicOnce<ProcLocal<SpinLock<Option<&'static mut QueueNode<Thread>>>>>,
-    current_thread_id: PanicOnce<ProcLocal<AtomicUsize>>,
+    current_thread_id: PanicOnce<ProcLocal<AtomicProcThreadId>>,
 }
 
 impl Scheduler {
     const fn new() -> Self {
         Self {
-            id_autoincrement: AtomicUsize::new(0),
+            id_autoincrement: AtomicThreadId::new(0),
             run_queues: PanicOnce::new(),
             retired_threads: PanicOnce::new(),
             allocated_threads: AtomicUsize::new(0),
@@ -75,23 +82,26 @@ impl Scheduler {
             .initialize_with(ProcLocal::new(|| SpinLock::new(None)));
 
         self.current_thread_id
-            .initialize_with(ProcLocal::new(|| AtomicUsize::new(0)));
+            .initialize_with(ProcLocal::new(|| AtomicProcThreadId::new(0, 0)));
     }
 
-    pub fn current_as_thread(&self, priority: ThreadPriority) -> Result<ThreadId, SchedulerError> {
+    pub fn current_as_kernel_thread(
+        &self,
+        priority: ThreadPriority,
+    ) -> Result<ThreadId, SchedulerError> {
         let tid = self.alloc_thread_id();
 
         let mut current_thread_lock = self.current_thread.lock();
 
         if self
             .current_thread_id
-            .compare_exchange(0, tid, Ordering::Acquire, Ordering::Relaxed)
+            .compare_exchange((0, 0), (0, tid), Ordering::Acquire, Ordering::Relaxed)
             .is_err()
         {
             return Err(SchedulerError::SlotTaken);
         }
 
-        let node = self.spawn_id(tid, priority, Default::default())?;
+        let node = self.spawn_id(tid, priority, None, Default::default())?;
 
         *current_thread_lock = Some(node);
 
@@ -117,11 +127,12 @@ impl Scheduler {
     pub fn spawn_thread(
         &self,
         priority: ThreadPriority,
+        process_id: Option<ProcessId>,
         context: CpuContext,
     ) -> Result<ThreadId, SchedulerError> {
         let new_thread_id = self.alloc_thread_id();
 
-        let node = self.spawn_id(new_thread_id, priority, context)?;
+        let node = self.spawn_id(new_thread_id, priority, process_id, context)?;
         self.schedule_node(node);
 
         Ok(new_thread_id)
@@ -135,9 +146,16 @@ impl Scheduler {
         &self,
         new_thread_id: ThreadId,
         priority: ThreadPriority,
+        process_id: Option<ProcessId>,
         context: CpuContext,
     ) -> Result<&'static mut QueueNode<Thread>, SchedulerError> {
-        self.allocate_thread(new_thread_id, self.current_thread_id(), priority, context)
+        self.allocate_thread(
+            new_thread_id,
+            self.current_ids().1,
+            priority,
+            process_id,
+            context,
+        )
     }
 
     fn next_node(&self) -> Option<&'static mut QueueNode<Thread>> {
@@ -169,9 +187,10 @@ impl Scheduler {
         thread: ThreadId,
         spawned_by: Option<ThreadId>,
         priority: ThreadPriority,
+        process_id: Option<ProcessId>,
         context: CpuContext,
     ) -> Result<&'static mut QueueNode<Thread>, SchedulerError> {
-        let new_thread = Thread::new(thread, spawned_by, priority, context);
+        let new_thread = Thread::new(thread, spawned_by, priority, process_id, context);
 
         if let Some(retired) = self.retired_threads.pop() {
             **retired = new_thread;
@@ -195,14 +214,20 @@ impl Scheduler {
         Ok(Box::leak(new_node_alloc))
     }
 
-    fn current_thread_id(&self) -> Option<ThreadId> {
-        let val = self.current_thread_id.load(Ordering::Relaxed);
+    fn current_ids(&self) -> (Option<ProcessId>, Option<ThreadId>) {
+        let (process_id, thread_id) = self.current_thread_id.load(Ordering::Relaxed);
 
-        if val == 0 {
-            return None;
-        }
+        let process_id = match process_id {
+            0 => None,
+            x => Some(x),
+        };
 
-        Some(val)
+        let thread_id = match thread_id {
+            0 => None,
+            x => Some(x),
+        };
+
+        (process_id, thread_id)
     }
 }
 

@@ -1,4 +1,4 @@
-use crate::{arch::CpuContext, memory::map::manager::PageFault, multitasking::SCHEDULER};
+use crate::{arch::CpuContext, memory::map::PageFault, multitasking::SCHEDULER};
 use crate::{log, warning_println};
 
 pub fn uart_status_change() {

@@ -50,13 +50,13 @@ bootinfo = { path = "libraries/bootinfo" }
 elf = { path = "libraries/elf" }
 test_runner = { path = "libraries/test_runner" }
 
+[profile.release]
+strip = true
 
 [profile.pre-kernel-release]
 inherits = "release"
 strip = true
 opt-level = "z"
-lto = true
-codegen-units = 1
 panic = "abort"
 
 [profile.pre-kernel-debug]

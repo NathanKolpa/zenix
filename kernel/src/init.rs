@@ -47,7 +47,7 @@ pub unsafe fn init(boot_info: &BootInfo) {
         .current_as_kernel_thread(LOWEST_PRIORITY)
         .expect("calling current_as_kernel_thread should never fail in init()");
 
-    debug_println!("sCHEDULER initialized; kernel thread id: {kernel_tid}");
+    debug_println!("SCHEDULER initialized; kernel thread id: {kernel_tid}");
 
     PROCESS_TABLE.init();
     debug_println!("PROCESS_TABLE initialized");

@@ -35,9 +35,10 @@ const PRIORITY_LEVELS: usize = 1;
 // TOOD: nodes and dummy nodes to the eternal alloc.
 
 pub struct Scheduler {
-    id_autoincrement: AtomicThreadId,
     run_queues: PanicOnce<FixedVec<PRIORITY_LEVELS, Queue<Thread>>>,
     retired_threads: PanicOnce<Queue<Thread>>,
+
+    id_autoincrement: AtomicThreadId,
     allocated_threads: AtomicUsize,
     allocation_exceeded: AtomicBool,
 
@@ -53,7 +54,6 @@ impl Scheduler {
             retired_threads: PanicOnce::new(),
             allocated_threads: AtomicUsize::new(0),
             allocation_exceeded: AtomicBool::new(false),
-
             current_thread: PanicOnce::new(),
             current_thread_id: PanicOnce::new(),
         }

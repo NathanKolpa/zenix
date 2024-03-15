@@ -17,13 +17,15 @@ pub struct Thread {
 }
 
 impl Thread {
-    pub const fn new(
+    pub fn new(
         thread_id: ThreadId,
         spawned_by: Option<ThreadId>,
         priority: ThreadPriority,
         process_id: Option<ProcessId>,
         context: CpuContext,
     ) -> Self {
+        assert_ne!(0, thread_id);
+
         Self {
             thread_id,
             spawned_by,

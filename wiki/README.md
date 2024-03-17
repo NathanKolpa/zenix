@@ -1,13 +1,11 @@
 # Wiki
 
-Help:
+How to:
 * [Getting Started](./getting-started.md)
 
 ---
 
-The kernel:
+Software Documentation:
 * [Introduction](./introduction.md)
-* [Booting](./boot.md)
+* [The boot process](./boot.md)
 * [Building](./build.md)
-* [Memory](./memory.md)
-* [Concurrency](./concurrency.md)

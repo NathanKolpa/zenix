@@ -1,23 +1,49 @@
-# Booting
+# The boot process
 
-This chapter describes the boot process from the moment the first line is executed, to the Kernel switching to userspace for the first time. The text contains links to code files which should help to clarify the code structure.
+This chapter describes the boot process from the moment the first line is executed, to the Kernel switching to userspace for the first time. The text contains links to code files which are ment to help clarify the code structure.
 
-![Boot Package Diagram](./diagrams/boot-package/bp.svg)
+| ![Boot Package Diagram](./diagrams/boot-package/bp.svg) |
+|:--:|
+| *Relevant crates and their dependencies* |
 
 ## Pre-kernel
 
-Zenix tries to optimize boot performance based on the Qemu emulator. Generally, the most performant method of booting is though the `-kernel` flag. In this case, Qemu will try to find a Multiboot[^1] in a elf32 executable. This executable in Zenix is called the "Pre-kernel".
+Zenix tries to optimize boot performance based on the Qemu emulator. Generally, the most performant method of booting is though the `-kernel` flag. In this case, Qemu will try to find a Multiboot header[^1] in a elf32 executable. This executable in Zenix is called the *Pre-kernel*.
 
-Zenix primarily targets 64-bit and multiboot can only boot into 32-bit (even on 64-bit computers). This task of [switching from Protected to Long Mode](../pre-kernel/src/long_mode.rs)[^2] is done by the Pre-kernel. During this switch, the Pre-kernel has to setup [the inital page tables](../pre-kernel/src/paging.rs)[^3]. The setup of these page tables requires that pyhsical memory is allocated. For the Pre-kernel, a simple [Bump Allocator](../pre-kernel/src/bump_memory.rs)[^4] suffices. Because multiple parts of the Kernel require pyhsical memory access, the full physical memory is mapped with an offset of 60 TiB. Futhermore, the Pre-kernel iself and "Bump memory" is identity mapped[^5].
+| ![Pre-kernel sequence](./diagrams/pre-kernel-flow/seq.svg) |
+|:--:|
+| *Sequence diagram of the Pre-kernel* |
+
+The first few instructions are dedicated to [setting up the stack](../pre-kernel/src/boot.s). This task can only be done in assembly because Rust makes the assumption that a stack is always there.
+
+### Initial mappings
+
+Zenix primarily targets 64-bit and multiboot can only boot into 32-bit (even on 64-bit computers). This task of [switching from Protected to Long Mode](../pre-kernel/src/long_mode.rs)[^2] is done by the Pre-kernel. Before this switch, the Pre-kernel has to setup [the inital page tables](../pre-kernel/src/paging.rs)[^3]. The setup of these page tables requires that pyhsical memory is allocated. For the Pre-kernel, a simple [`BumpAllocator`](../pre-kernel/src/bump_memory.rs)[^4] suffices because memory never has to be deallocated. Multiple parts of the Kernel require arbitrary pyhsical memory access, the full physical memory is mapped with an offset of 60 TiB[^3]. Other parts of the memory are identity mapped[^5], these include:
+
+* The Pre-kernel code.
+* The Bump Memory.
+* The Pre-kernel/Kernel stack.
+* The Root System Descriptor Table.
+* The VGA buffer.
+* The Local APIC.
+
+### Mapping the Kernel
 
 The actual Zenix Kernel is not part of the Pre-kernel, they are seperate executables. Another benifit of having 2 seperate executables, is that we can skip linking the two files during compilation. Therefore, speeding up build times. Linking these two executables is also not a trivial task, because they target 2 different architectures. Qemu loads the Kernel into memory with the `-inird` (inital ramdisk) flag. The Pre-kernel can then identify where the Kernel is placed in memory though the use of Multiboot's [module feature](../pre-kernel/src/multiboot.rs).
 
 The kernel mappings are backed by the physical memory of the Multiboot module, saving the overhead of copying the data of the module to the Kernel's mappings. There is a exceptions to this rule. Some sections are not present within the Kernel's elf file, but are still required to be mapped in memory. These sections are most likely static uninitialized data (commonly called the *.bss section*). This means that backing the memory mappings with the Mulitboot module is not possible. The parts of these sections located in the bump memory instead.
 
-The last step of the Pre-kernel is to save information that can would be lost after switching to long mode/calling to the kernel. This (boot) information [gets stored in the bump memory](../pre-kernel/src/boot_info.rs) and gets passed to the kernel.
+### Boot information
 
-Finally, the Pre-kernel can call [`kernel_main`](../kernel/src/main.rs) and the actual Kernel starts running.
+Another task of the Pre-kernel is to save information that can would be lost after switching to long mode/calling to the kernel. This (boot) information [gets stored in the bump memory](../pre-kernel/src/boot_info.rs) and gets passed to the kernel.
 
+After the Pre-kernel is done, there is still a lot of memory left within bump memory. The kernel can make use of this by repurposing whatever is left as backing for the heap. This marks the final stage of the Bump Memory. The Kernel can also expliot the fact that the Pre-kernel is right ajacent to the Bump Memory. The memory used by the Pre-kernel can be trivially relcaimed by simply placing it in the heap. The kernel is not aware of this this however, the merging is actually done by the Pre-kernel when setting up the boot information.
+
+| ![Bump Memory](./diagrams/bump-memory/bm.svg) |
+|:--:|
+| *Bump memory in its final stage* |
+
+Finally, the Pre-kernel can switch to long mode and enter the kernel by calling [`kernel_main`](../kernel/src/main.rs).
 
 [^1]: Gnu: [Multiboot Specification version 0.6.96](https://www.gnu.org/software/grub/manual/multiboot/multiboot.html)
 [^2]: Osdev: [Setting up long mode](https://wiki.osdev.org/Setting_Up_Long_Mode)
@@ -27,21 +53,22 @@ Finally, the Pre-kernel can call [`kernel_main`](../kernel/src/main.rs) and the 
 
 ## Kernel heap
 
-When the Pre kernel is done, there is a lot of memory left within bump memory. The kernel makes use of this by repurposing whatever is left as the kernel heap. This marks the final stage of the bump memory.
-
-![Bump Memory](./diagrams/bump-memory/bm.svg)
+Now begins the first step of the [kernel initialization](../kernel/src/init.rs).
 
 TODO: write about the heap allocation algorithm, [For readers](https://os.phil-opp.com/heap-allocation/).
 
 ## Physical Memory
 
-[Paging Introduction](https://os.phil-opp.com/paging-introduction/).
+In order to manage virtual memory, the Kernel needs to manage physical memory first using the [`FrameAllocator`](../kernel/src/memory/alloc/frame_alloc.rs). The Zenix kernel uses the Buddy Allocation System[^7] which is same algoritm as the Linux Kernel[^6] uses. The reason for using Buddy Allocation is because physical memory has one big diffrence compared to traditional memory. Which is the fact that, physical memory only gets allocated in blocks of 4KiB, 2MiB and 1GiB. This midigates the main downside of the Buddy Allocator, which is that each allocation has to be a power of 2. How convenient! Buddy allocation has a very good time complexity of `O(Log(N))`.
 
-In order to manage virtual memory, the Kernel needs to manage physical memory first. The Zenix kernel uses the same underlying algoritm as the [Linux Kernel](https://www.kernel.org/doc/gorman/html/understand/understand009.html). The reason for using [**Buddy Allocation**](https://www.youtube.com/watch?v=DRAHRJEAEso) is because physical memory has one big diffrence compared to traditional memory. Which is the fact that, physical memory only gets allocated in blocks of 4KiB, 2MiB and 1GiB. This midigates the main downside of the Buddy Allocator, which is that each allocation has to be a power of 2. How convenient!
+The memory that is available for the Kernel is not represented as a single flat line, instead, the Pre-Kernel gives a list of usable **regions**. Each region gets its own "heap", this is called a [`Zone`](../kernel/src/memory/alloc/frame_alloc/zone.rs) (the same name that linux uses[^8]).
 
-The memory that is available is not represented as a single flat line, instead the Pre-Kernel gives a list of usable **regions**. Each region gets its own "heap", this is called a **Zone** ([the same name that linux uses](https://litux.nl/mirror/kerneldevelopment/0672327201/ch11lev1sec2.html)). 
+Each zone keeps track of an array of a so called [`Level`](../kernel/src/memory/alloc/frame_alloc/level.rs) where each index of a level corresponds to the order of magnitude of which that level manages. The order of magitude here refers to the size of the allocation. Say, 4KiB is requested, the order would be 12. Each level consists of a (double-linked) freelist[^9] and a [`Bitmap`](../libraries/essentials/src/bitmap.rs). The freelist here keeps track of blocks of free memory. The bitmap marks each block as used or free. This is usefull for navigating the freelist, because when a block is free, then you don't have to walk the entire list in order to get the node. Instead its possible to calculate the address and derefrence the memory as a node. Which keeps the complexity for the algorithm to `O(log(n))`.
 
-Each zone keeps track of a list of so called **Levels** where each index of a level corresponds to the order of magnitude of which that level manages. The order of magitude here refers to the size of the allocation. Say, 4KiB is requested, the order would be 12. Each level consists of a (double-linked) [freelist](https://en.wikipedia.org/wiki/Free_list) and a bitmap. The freelist here keeps track of blocks of free memory. The bitmap marks each block as used or free. This is usefull for navigating the freelist, because when a block is free, then you don't have to walk the entire list in order to get the node. Instead its possible to calculate the address and derefrence the memory as a node. Which keeps the complexity for the algorithm to `O(log(n))`.
+[^6]: Kernel archives: [Chapter 6 Physical Page Allocation](https://www.kernel.org/doc/gorman/html/understand/understand009.html)
+[^7]: Gabriel Parmer: [GWU OS: Memory Allocation - Slab and Buddy Allocators](https://www.youtube.com/watch?v=DRAHRJEAEso)
+[^8]: Robert Love: [Zones](https://litux.nl/mirror/kerneldevelopment/0672327201/ch11lev1sec2.html)
+[^9]: Wikipedia: [Free list](https://en.wikipedia.org/wiki/Free_list)
 
 ### Initialization
 
@@ -88,9 +115,12 @@ Understanding how interrupts work and are handled in the kernel is important bec
 
 ### Legacy
 
-One of the central cpu feature that drives the kernel are interrupts. In simple terms, an interrupt is a function/callback that can be called by the hardware. But who calls these magical functions? You may guess that this is done by the processor chip itself, but its actually a [seperate chip](https://wiki.osdev.org/8259_PIC). No, actually there are two daisy chained together... No actually, you have to disable both of them and use ANTOHER chip called the [**APIC**](https://wiki.osdev.org/APIC). Like with many things of the x86_64 architecture, there are a lot of parts that merely exist for legacy reasons.
+One of the central hardware features that drives the kernel are interrupts. In simple terms, an interrupt is a function/callback that can be called by the hardware. But who calls these magical functions? You may guess that this is done by the processor chip itself, but its actually a seperate chip called the [`PIC`](../libraries/x86_64/src/device/pic_8259.rs)[^10]. No, actually there are two daisy chained together... No actually, you have to disable both of them and use ANTOHER chip called the [`APIC`](../libraries/x86_64/src/device/pic_8259.rs)[^11]. Like with many things of the x86_64 architecture, there are a lot of parts that merely exist for legacy reasons.
 
-Because it's not guaranteed that the APIC chip is available on a CPU, Zenix supports both of them. By using the `cpuid` instruction its possible to detect the presence of this chip. Unlike it's predecessor, the way the kernel interacts with the APIC is rather complicated.
+Because it's not guaranteed that the APIC chip is available on a CPU, Zenix supports both of them. By using the [`cpuid`](../libraries/x86_64/src/cpuid.rs) instruction its possible to detect the presence of this chip. Unlike it's predecessor, the way the kernel interacts with the APIC is rather complicated.
+
+[^10]: Osdev: [8259 PIC](https://wiki.osdev.org/8259_PIC)
+[^11]: Osdev: [APIC](https://wiki.osdev.org/APIC)
 
 ### The APIC
 

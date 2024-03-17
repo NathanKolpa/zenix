@@ -1,5 +1,5 @@
 use elf::{ElfHeaderReader, ElfReadError, ElfReader, RelocationEntryKind, SectionKind};
-use x86_64::paging::{cr3, PageSize, PageTable, PageTableEntry, PageTableEntryFlags};
+use x86_64::paging::{PageSize, PageTable, PageTableEntry, PageTableEntryFlags};
 
 use crate::{
     bump_memory::BumpMemory,

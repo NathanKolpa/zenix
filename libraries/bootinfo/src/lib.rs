@@ -11,6 +11,21 @@ pub struct MemoryRegion {
     pub size: u64,
 }
 
+impl MemoryRegion {
+    pub fn merge_with(&self, rhs: Self) -> Option<Self> {
+        let self_end = self.start + self.size;
+
+        if self_end != rhs.start {
+            return None;
+        }
+
+        Some(Self {
+            start: self.start,
+            size: self.size + rhs.size,
+        })
+    }
+}
+
 #[repr(C)]
 #[derive(Clone, Debug)]
 pub struct BootInfoData {

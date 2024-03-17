@@ -34,13 +34,16 @@ members = [
 	"libraries/bootinfo",
 	"libraries/elf",
 	"libraries/test_runner",
+	"libraries/path",
 ]
 
 default-members = [
 	".",
 	"libraries/essentials",
+	"libraries/bootinfo",
 	"libraries/x86_64",
 	"libraries/elf",
+	"libraries/path",
 ]
 
 [workspace.dependencies]
@@ -49,6 +52,7 @@ x86_64 = { path = "libraries/x86_64" }
 bootinfo = { path = "libraries/bootinfo" }
 elf = { path = "libraries/elf" }
 test_runner = { path = "libraries/test_runner" }
+path = { path = "libraries/path" }
 
 [profile.release]
 strip = true

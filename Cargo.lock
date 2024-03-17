@@ -34,6 +34,13 @@ dependencies = [
 ]
 
 [[package]]
+name = "path"
+version = "0.1.0"
+dependencies = [
+ "test_runner",
+]
+
+[[package]]
 name = "pre-kernel"
 version = "0.1.0"
 dependencies = [

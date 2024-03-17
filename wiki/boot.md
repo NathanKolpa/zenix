@@ -6,7 +6,7 @@ This chapter describes the boot process from the moment the first line is execut
 
 Zenix tries to optimize boot performance based on the Qemu emulator. Generally, the most performant method of booting is though the `-kernel` flag. In this case, Qemu will try to find a Multiboot[^1] in a elf32 executable. This executable in Zenix is called the "Pre-kernel".
 
-Zenix primarily targets 64-bit and multiboot can only boot into 32-bit (even on 64-bit computers). This task of [switching from Protected to Long Mode](../pre-kernel/src/long_mode.rs)[^2] is done by the Pre-kernel. During this switch, the Pre-kernel has to setup [the inital page tables](../pre-kernel/src/paging.rs)[^3]. The setup of these page tables requires that pyhsical memory is allocated. For the Pre-kernel, a simple [Bump Allocator](../pre-kernel/src/bump_memory.rs)[^4] suffices. Because multiple parts of the Kernel require pyhsical memory access, the full physical memory is mapped with an offset of 60 TiB. Futhermore, the Pre-kernel iself and "Bump memory" is identity mapped[5^].
+Zenix primarily targets 64-bit and multiboot can only boot into 32-bit (even on 64-bit computers). This task of [switching from Protected to Long Mode](../pre-kernel/src/long_mode.rs)[^2] is done by the Pre-kernel. During this switch, the Pre-kernel has to setup [the inital page tables](../pre-kernel/src/paging.rs)[^3]. The setup of these page tables requires that pyhsical memory is allocated. For the Pre-kernel, a simple [Bump Allocator](../pre-kernel/src/bump_memory.rs)[^4] suffices. Because multiple parts of the Kernel require pyhsical memory access, the full physical memory is mapped with an offset of 60 TiB. Futhermore, the Pre-kernel iself and "Bump memory" is identity mapped[^5].
 
 The actual Zenix Kernel is not part of the Pre-kernel, they are seperate executables. Another benifit of having 2 seperate executables, is that we can skip linking the two files during compilation. Therefore, speeding up build times. Linking these two executables is also not a trivial task, because they target 2 different architectures. Qemu loads the Kernel into memory with the `-inird` (inital ramdisk) flag. The Pre-kernel can then identify where the Kernel is placed in memory though the use of Multiboot's [module feature](../pre-kernel/src/multiboot.rs).
 
@@ -19,9 +19,9 @@ Finally, the Pre-kernel can call [`kernel_main`](../kernel/src/main.rs) and the 
 
 [^1]: Gnu: [Multiboot Specification version 0.6.96](https://www.gnu.org/software/grub/manual/multiboot/multiboot.html)
 [^2]: Osdev: [Setting up long mode](https://wiki.osdev.org/Setting_Up_Long_Mode)
-[3^]: Phil Opp: [Paging Introduction](https://os.phil-opp.com/paging-introduction/)
-[4^]: Phil Opp: [Bump Allocator](https://os.phil-opp.com/allocator-designs/)
-[5^]: Osdev: [Identity Paging](https://wiki.osdev.org/Identity_Paging)
+[^3]: Phil Opp: [Paging Introduction](https://os.phil-opp.com/paging-introduction/)
+[^4]: Phil Opp: [Bump Allocator](https://os.phil-opp.com/allocator-designs/)
+[^5]: Osdev: [Identity Paging](https://wiki.osdev.org/Identity_Paging)
 
 ## Kernel heap
 

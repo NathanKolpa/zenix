@@ -7,12 +7,16 @@ use crate::{
     bump_memory::BumpMemory,
     multiboot::{MultibootInfo, MultibootMMapEntry},
     paging::{align_down, align_up, PHYS_MEM_OFFSET},
-    regions::{known_regions, stack},
+    regions::{known_regions, pre_kernel, stack},
 };
 
 pub fn finalize_boot_info(bump_memory: BumpMemory, kernel_boot_info: &mut BootInfoData) {
     kernel_boot_info.bump_memory = bump_memory.used_memory();
-    kernel_boot_info.usable_heap = bump_memory.left_over_memory();
+
+    kernel_boot_info.usable_heap = bump_memory
+        .left_over_memory()
+        .merge_with(pre_kernel())
+        .expect("The Pre-kernel should be ajacent to the Bump Memory");
 }
 
 pub fn setup_boot_info<'a>(
@@ -37,7 +41,7 @@ pub fn setup_boot_info<'a>(
     boot_info.write(BootInfoData {
         physical_memory_offset: PHYS_MEM_OFFSET as u64,
         kernel_stack: stack(),
-        usable_heap: null_region, // TODO: add pre kernel to this.
+        usable_heap: null_region,
         usable_memory_addr: usable_memory.as_ptr() as u64,
         usable_memory_len: usable_memory.len() as u64,
         kernel_code: kernel_module_region,

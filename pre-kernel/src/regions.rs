@@ -83,3 +83,12 @@ pub fn stack() -> MemoryRegion {
         size: unsafe { &STACK_END as *const _ as u64 - (&STACK_START as *const _ as u64) },
     }
 }
+
+pub fn pre_kernel() -> MemoryRegion {
+    MemoryRegion {
+        start: unsafe { &PRE_KERNEL_START as *const _ as u64 },
+        size: unsafe {
+            &PRE_KERNEL_END as *const _ as u64 - (&PRE_KERNEL_START as *const _ as u64)
+        },
+    }
+}

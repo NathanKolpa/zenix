@@ -4,7 +4,6 @@ use essentials::spin::Singleton;
 use x86_64::{segmentation::*, PrivilegeLevel};
 
 pub const DOUBLE_FAULT_IST_INDEX: usize = 0;
-pub const PAGE_FAULT_IST_INDEX: usize = 1;
 
 fn init_tss() -> TaskStateSegment {
     let mut tss = TaskStateSegment::new();
@@ -13,11 +12,6 @@ fn init_tss() -> TaskStateSegment {
 
     tss.interrupt_stack_table[DOUBLE_FAULT_IST_INDEX] =
         TssStackPointer::from_slice(unsafe { &mut *addr_of_mut!(DOUBLE_FAULT_STACK) });
-
-    static mut PAGE_FAULT_STACK: [u8; 4096 * 16] = [0; 4096 * 16];
-
-    tss.interrupt_stack_table[PAGE_FAULT_IST_INDEX] =
-        TssStackPointer::from_slice(unsafe { &mut *addr_of_mut!(PAGE_FAULT_STACK) });
 
     static mut PRIVILEGED_STACK: [u8; 4096 * 16] = [0; 4096 * 16]; // TODO: dynamically allocate this.
 

@@ -2,7 +2,7 @@
 
 This chapter describes the boot process from the moment the first line is executed, to the Kernel switching to userspace for the first time. The text contains links to code files which should help to clarify the code structure.
 
-![Boot Package Diagram](./diagrams/boot-pacakge/bp.svg)
+![Boot Package Diagram](./diagrams/boot-package/bp.svg)
 
 ## Pre-kernel
 

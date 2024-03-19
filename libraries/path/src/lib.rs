@@ -10,12 +10,14 @@ pub enum PathError {
     Empty,
 }
 
-#[derive(Debug, PartialEq, Eq, Hash)]
+#[derive(Debug, PartialEq, Eq, Hash, PartialOrd, Ord)]
 pub struct Path {
     bytes: str,
 }
 
 impl Path {
+    pub const ROOT: &'static Path = unsafe { Path::new_unchecked("/") };
+
     pub fn new<S: AsRef<str> + ?Sized>(value: &S) -> Result<&Self, PathError> {
         let str = value.as_ref();
 
@@ -40,8 +42,73 @@ impl Path {
             }
         }
 
-        unsafe { Ok(&*(str as *const str as *const Self)) }
+        Ok(unsafe { Self::new_unchecked(str) })
     }
+
+    const unsafe fn new_unchecked(str: &str) -> &Self {
+        &*(str as *const str as *const Self)
+    }
+
+    pub fn is_absolute(&self) -> bool {
+        !self.is_relative()
+    }
+
+    pub fn is_relative(&self) -> bool {
+        self.bytes.as_bytes()[0] != b'/'
+    }
+
+    pub fn as_str(&self) -> &str {
+        &self.bytes
+    }
+
+    pub fn starts_with(&self, base: &Path) -> bool {
+        let mut components = self.components();
+
+        for base_component in base.components() {
+            let Some(component) = components.next() else {
+                return false;
+            };
+
+            if base_component != component {
+                return false;
+            }
+        }
+
+        true
+    }
+
+    pub fn components(&self) -> Components<'_> {
+        Components {
+            path: self,
+            index: 0,
+        }
+    }
+
+    pub fn combine(&self, _other: &Path) -> (&Path, &Path) {
+        todo!()
+    }
+}
+
+#[allow(dead_code)]
+pub struct Components<'a> {
+    path: &'a Path,
+    index: usize,
+}
+
+impl<'a> Iterator for Components<'a> {
+    type Item = Component<'a>;
+
+    fn next(&mut self) -> Option<Self::Item> {
+        todo!()
+    }
+}
+
+#[derive(Debug, PartialEq, Eq, PartialOrd, Ord)]
+pub enum Component<'a> {
+    RootDir,
+    CurrentDir,
+    Parent,
+    Name(&'a str),
 }
 
 #[cfg(test)]

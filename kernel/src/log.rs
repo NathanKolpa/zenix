@@ -12,7 +12,7 @@ use core::fmt::Arguments;
 use essentials::spin::Singleton;
 use x86_64::device::{Uart16550, VgaBuffer};
 
-use crate::log::{buffer_logger::BufferLogger, log_mux::SerialMux, serial_logger::SerialLogger};
+use crate::log::{buffer_logger::BufferLogger, log_mux::LoggerMux, serial_logger::SerialLogger};
 
 #[doc(hidden)]
 #[derive(Clone, Copy)]
@@ -28,9 +28,9 @@ trait Logger {
     fn flush(&self);
 }
 
-static CHANNEL: Singleton<SerialMux<SerialLogger<Uart16550>, BufferLogger<VgaBuffer>>> =
+static CHANNEL: Singleton<LoggerMux<SerialLogger<Uart16550>, BufferLogger<VgaBuffer>>> =
     Singleton::new(|| unsafe {
-        SerialMux::new(
+        LoggerMux::new(
             SerialLogger::new(Uart16550::new_and_init(0x3F8)),
             BufferLogger::new(VgaBuffer::new()),
         )

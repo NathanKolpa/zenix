@@ -21,9 +21,10 @@ pub mod log;
 pub mod memory;
 pub mod multitasking;
 
+pub mod fs;
 #[cfg(test)]
 pub mod testing;
-mod utils;
+pub mod utils;
 
 use core::panic::PanicInfo;
 

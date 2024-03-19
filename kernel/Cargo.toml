@@ -8,3 +8,4 @@ license.workspace = true
 bootinfo = { workspace = true }
 essentials = { workspace = true }
 x86_64 = { workspace = true }
+path = { workspace = true }

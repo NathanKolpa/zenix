@@ -1,6 +1,7 @@
 use bootinfo::BootInfo;
 
 use crate::{
+    arch::x86_64::mp,
     memory::{
         alloc::{kernel_alloc::KERNEL_ALLOC, FRAME_ALLOC},
         map::MemoryMapper,
@@ -51,4 +52,6 @@ pub unsafe fn init(boot_info: &BootInfo) {
 
     PROCESS_TABLE.init();
     debug_println!("PROCESS_TABLE initialized");
+
+    mp::start_slave_processors(|processor_id| debug_println!("Processor #{processor_id} online"));
 }

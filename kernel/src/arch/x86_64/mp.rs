@@ -14,3 +14,5 @@ pub fn processor_id() -> usize {
         InterruptControl::Apic(apic) => apic.id() as usize,
     }
 }
+
+pub fn start_slave_processors(_startup: impl Fn(usize)) {}
